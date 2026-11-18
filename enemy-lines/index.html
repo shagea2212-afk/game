@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>خلف خطوط العدو</title>
+<style>
+:root{--bg:#111216;--pn:#1d1e24;--cell:#2a2c35;--ln:#33363f;--tx:#f1f1f4;--mu:#9a9caa;--red:#ff4757;--teal:#2ed3b7;--blue:#3a8de0;--gold:#ffb21e;--green:#2ecc71}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;font-size:16px}
+body{padding:8px 14px 24px;max-width:480px;margin:0 auto}
+h1{font-size:27px;margin:10px 0 2px;text-align:center;color:var(--red);letter-spacing:2px}
+h3{margin:2px 0 6px;font-size:17px;text-align:center}
+p{margin:6px 0;line-height:1.6}
+.sub{color:var(--mu);text-align:center;font-size:14px;margin-bottom:12px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:18px;padding:12px;margin:8px 0}
+.card.me{border:3px solid var(--teal)}.card.enemy{border:3px solid var(--red)}
+input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--ln);background:var(--cell);color:var(--tx);font-size:17px;text-align:center;-webkit-user-select:text;user-select:text}
+.btn{display:block;width:100%;padding:14px;margin:8px 0;border-radius:13px;font-size:17px;font-weight:700;color:#fff;background:var(--cell);border:1px solid var(--ln)}
+.btn:disabled{opacity:.4}
+.btn.red{background:var(--red);border-color:var(--red)}.btn.teal{background:var(--teal);border-color:var(--teal);color:#062b25}
+.code{font-size:40px;letter-spacing:6px;text-align:center;font-weight:800;color:var(--gold);direction:ltr}
+.pl{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background:var(--cell);margin:5px 0}
+.hud{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--mu);margin:2px}
+.hud b{color:var(--tx)}
+.bar{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin:2px 4px 6px}
+.bar .t{color:var(--gold);font-weight:800;font-size:20px}
+.card.me .board{max-width:250px;margin:6px auto}.card.enemy .board{max-width:330px;margin:6px auto}
+.board{direction:ltr;display:grid;gap:4px;background:#16171c;padding:6px;border-radius:14px;margin:6px 0;touch-action:manipulation}
+.c{aspect-ratio:1/1;border-radius:8px;background:var(--cell);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid transparent;position:relative}
+.c.fin{background:#1d3550}
+.c.me{background:var(--teal)}
+.c.cand{border:2px dashed #ffffff66;background:#343746}
+.c.cand.go{border:2px solid #fff;cursor:pointer}
+.c.tr{background:#3a1820;border:2px dashed var(--red)}
+.c.safe{background:#163d2a;border:2px solid var(--green)}
+.c.hit{animation:hit .5s}
+.c.stun{background:#5a1f2a}
+@keyframes hit{0%{transform:scale(1.3)}100%{transform:scale(1)}}
+.q{background:#16171c;border-radius:14px;padding:8px;margin:4px 0;min-height:118px}
+.qt{text-align:center;font-weight:700;font-size:17px;margin:2px 0 8px;line-height:1.5}
+.qcat{display:block;text-align:center;font-size:12px;color:var(--mu)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.opts button{padding:12px 4px;border-radius:11px;border:1px solid var(--ln);background:var(--cell);color:var(--tx);font-size:17px;font-weight:700}
+.opts.emo button{font-size:28px;padding:8px}
+.opts button.ok{background:#1f7a46;border-color:var(--green)}.opts button.no{background:#7a1f2a}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;direction:ltr;margin-top:6px}
+.pad button{padding:12px 0;border-radius:13px;background:var(--cell);border:1px solid var(--ln);color:#fff;font-size:24px}
+.pad button:disabled{opacity:.3}
+.pad button.safe{background:#1f7a46;border-color:var(--green)}
+.status{text-align:center;font-size:15px;min-height:22px;color:var(--gold);margin:4px 0}
+.legend{font-size:13px;color:var(--mu);line-height:1.75}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;border-bottom:1px solid var(--ln);text-align:center}
+.win{font-size:24px;text-align:center;color:var(--gold);font-weight:800}
+#ovl{position:fixed;inset:0;background:rgba(10,10,14,.9);display:none;align-items:center;justify-content:center;z-index:9;text-align:center;padding:30px;font-size:18px;line-height:1.7}
+#ovl.on{display:flex}
+#toast{position:fixed;bottom:18px;left:16px;right:16px;background:var(--red);padding:12px;border-radius:12px;text-align:center;display:none;z-index:10}
+.flash{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity .45s}
+.flash.on{opacity:.35;transition:none}
+</style>
+</head>
+<body>
+<div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div>
+
+<div class="screen on" id="home">
+  <h1>BEHIND ENEMY LINES</h1>
+  <div class="sub">خلف خطوط العدو — اجرِ، فكّر، أو جازف</div>
+  <div class="card">
+    <input id="hname" maxlength="16" placeholder="اسمك">
+    <button class="btn red" id="bhost">إنشاء غرفة</button>
+  </div>
+  <div class="card">
+    <input id="hcode" maxlength="5" placeholder="رمز الغرفة" style="direction:ltr;text-transform:uppercase;letter-spacing:4px">
+    <button class="btn teal" id="bjoin">انضمام</button>
+  </div>
+  <div class="card legend">
+    <b style="color:var(--tx)">كيف تُلعب؟</b><br>
+    🏃 <b>العدّاء</b> يجري من الأسفل إلى خط النهاية 🏁 في الأعلى.<br>
+    🧩 في كل خطوة يظهر له تحدٍّ سريع: سؤال أو رمز أو مطابقة أو نمط.<br>
+    🪤 <b>في اللحظة نفسها</b> يرى خصمه لوحة الجري، فيضع فخّين في المربعات الثلاثة أمام العدّاء (يسار، وسط، يمين)، ويبقى مربع واحد آمن.<br>
+    ✅ إذا حلّ العدّاء التحدي يُضاء له الاتجاه الآمن بالأخضر.<br>
+    🎲 أو يجازف ويتحرك فوراً بالتخمين، وهذا أسرع إن أصاب.<br>
+    💥 الفخ يُسقطه مكانه ويشلّه ثانيتين ونصفاً، ثم تبدأ خطوة جديدة.<br>
+    🔁 تتبادلان الأدوار كل جولة، ومجموع الأزمنة الأقل يفوز.
+  </div>
+</div>
+
+<div class="screen" id="lobby">
+  <div class="card"><div class="sub" style="margin:0">رمز الغرفة — أرسله لخصمك</div><div class="code" id="lcode">-----</div></div>
+  <div class="card"><h3>اللاعبون</h3><div id="lplayers"></div></div>
+  <div class="status" id="lmsg"></div>
+  <button class="btn red" id="lstart">ابدأ المباراة</button>
+  <p class="sub" id="lhint"></p>
+</div>
+
+<div class="screen" id="game">
+  <div class="hud"><span id="hround"></span><span id="hscore"></span></div>
+  <div id="stage"></div>
+</div>
+
+<div class="screen" id="end"><div class="card" id="endc"></div></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/*CORE-START*/
+var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=2500,ROUNDS=4,READY_MS=3000,ROUNDEND_MS=6000;
+var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
+function rnd(n){return Math.floor(Math.random()*n);}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function mcFrom(opts){var correct=opts[0],o=shuffle(opts.slice());return {o:o,ans:o.indexOf(correct)};}
+var BANK=[
+['كم عدد أيام الأسبوع؟',['7','6','8','5']],['كم دقيقة في الساعة؟',['60','100','30','90']],['ما لون مزج الأزرق والأصفر؟',['أخضر','برتقالي','بنفسجي','بني']],
+['كم ساعة في اليوم؟',['24','12','20','36']],['كم ضلعاً للمسدس؟',['6','5','8','7']],['كم صفراً في المليون؟',['6','5','7','9']],
+['أقرب كوكب إلى الشمس؟',['عطارد','الزهرة','المريخ','الأرض']],['أكبر كواكب المجموعة الشمسية؟',['المشتري','زحل','نبتون','الأرض']],
+['الكوكب الأحمر؟',['المريخ','الزهرة','عطارد','المشتري']],['الرمز الكيميائي للذهب؟',['Au','Ag','Go','Gd']],['أصلب مادة طبيعية؟',['الألماس','الحديد','الكوارتز','الجرانيت']],
+['أكبر حيوان على الأرض؟',['الحوت الأزرق','الفيل','القرش','الزرافة']],['كم رجلاً للعنكبوت؟',['8','6','10','4']],['سفينة الصحراء؟',['الجمل','الحصان','الفيل','الحمار']],
+['أسرع حيوان بري؟',['الفهد','الأسد','الغزال','الحصان']],['صغير الأسد يُسمّى؟',['شِبل','جرو','مُهر','حَمَل']],['أيّها لا يطير؟',['النعامة','الصقر','البومة','الحمامة']],
+['عاصمة اليابان؟',['طوكيو','أوساكا','كيوتو','سيول']],['أكبر محيط؟',['الهادئ','الأطلسي','الهندي','المتجمد']],['أكبر قارة؟',['آسيا','أفريقيا','أوروبا','أستراليا']],
+['برج إيفل في؟',['باريس','روما','لندن','مدريد']],['عاصمة كندا؟',['أوتاوا','تورنتو','مونتريال','فانكوفر']],['عاصمة تركيا؟',['أنقرة','إسطنبول','إزمير','بورصة']],
+['عاصمة أستراليا؟',['كانبرا','سيدني','ملبورن','بيرث']],['له أسنان ولا يعض؟',['المشط','القلم','الكتاب','الكرسي']],['يكتب ولا يقرأ؟',['القلم','الدفتر','الطاولة','الحاسوب']],
+['له عين ولا يرى؟',['الإبرة','المرآة','الكتاب','المفتاح']],['كلما أخذت منه كبُر؟',['الحفرة','البالون','الظل','النهر']],['بيت بلا أبواب ولا نوافذ؟',['البيضة','الكهف','الخيمة','الصندوق']]
+];
+var EMO=['🍎','🚀','🐟','🌙','⭐','🔑','🎲','🌵','🐢','⚽','🎈','🍇','🔥','💎','🐝','🌈','🎧','🔔','🍄','🦋'];
+function numOpts(ans,spread){var set=[ans],g=0;while(set.length<4&&g++<200){var c=ans+(rnd(2)?1:-1)*(1+rnd(spread));if(c>=0&&set.indexOf(c)<0)set.push(c);}return mcFrom(set.map(String));}
+function makeQ(used,id){
+  var kind=['mc','mc','math','pattern','symbol','odd'][rnd(6)],q={id:id,kind:kind},m;
+  if(kind==='mc'){var pool=[];for(var i=0;i<BANK.length;i++)if(!used[i])pool.push(i);if(!pool.length){for(i=0;i<BANK.length;i++){delete used[i];pool.push(i);}}
+    var k=pool[rnd(pool.length)];used[k]=1;m=mcFrom(BANK[k][1]);q.cat='سؤال';q.text=BANK[k][0];q.o=m.o;q.ans=m.ans;}
+  else if(kind==='math'){var a=2+rnd(9),b=2+rnd(9),op=rnd(3),ans,s;
+    if(op===0){ans=a+b;s=a+' + '+b;}else if(op===1){var x=Math.max(a,b)+rnd(6),y=Math.min(a,b);ans=x-y;s=x+' − '+y;}else{ans=a*b;s=a+' × '+b;}
+    m=numOpts(ans,4);q.cat='حساب سريع';q.text=s+' = ؟';q.o=m.o;q.ans=m.ans;}
+  else if(kind==='pattern'){var st=1+rnd(9),d=2+rnd(5),seq=[st,st+d,st+2*d,st+3*d];m=numOpts(st+4*d,3);q.cat='نمط';q.text=seq.join('، ')+'، ؟';q.o=m.o;q.ans=m.ans;}
+  else if(kind==='symbol'){var e=shuffle(EMO.slice()).slice(0,4);m=mcFrom(e);q.cat='مطابقة';q.text='اضغط على الرمز المطابق: '+e[0];q.o=m.o;q.ans=m.ans;q.emo=1;}
+  else{var e2=shuffle(EMO.slice()).slice(0,2),opts=[e2[1],e2[0],e2[0],e2[0]];var o=shuffle(opts.slice());q.cat='رمز مختلف';q.text='أيّ رمز مختلف عن البقية؟';q.o=o;q.ans=o.indexOf(e2[1]);q.emo=1;}
+  return q;
+}
+function candidates(pos){var out=[];DORDER.forEach(function(d){var r=pos[0]+DIRS[d][0],c=pos[1]+DIRS[d][1];if(r>=0&&c>=0&&c<COLS)out.push(d);});return out;}
+function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],round:0};var self=this;this.iv=setInterval(function(){self.tick();},150);}
+Server.prototype.now=function(){return Date.now();};
+Server.prototype.connect=function(c){this.conns.push({c:c,pid:null});};
+Server.prototype.entry=function(c){for(var i=0;i<this.conns.length;i++)if(this.conns[i].c===c)return this.conns[i];return null;};
+Server.prototype.player=function(pid){var ps=this.S.players;for(var i=0;i<ps.length;i++)if(ps[i].id===pid)return ps[i];return null;};
+Server.prototype.disconnect=function(c){
+  var e=this.entry(c);if(!e)return;this.conns.splice(this.conns.indexOf(e),1);
+  var p=this.player(e.pid);if(!p)return;if(this.conns.some(function(x){return x.pid===p.id;}))return;
+  p.on=false;if(this.S.phase==='lobby'&&p.id!==this.hostPid)this.S.players.splice(this.S.players.indexOf(p),1);this.push();
+};
+Server.prototype.handle=function(c,m){
+  if(!m||typeof m!=='object')return;
+  var S=this.S,e=this.entry(c),n=this.now();if(!e)return;
+  if(m.t==='hello'){
+    var name=String(m.name||'').trim().slice(0,16)||'لاعب',pid=String(m.pid||'').slice(0,40);if(!pid)return;
+    var p=this.player(pid);
+    if(p){p.on=true;if(S.phase==='lobby')p.name=name;}
+    else{if(S.phase!=='lobby'){c.send({t:'err',msg:'المباراة جارية بالفعل'});return;}
+      if(S.players.length>=2){c.send({t:'err',msg:'الغرفة ممتلئة (لاعبان فقط)'});return;}
+      p={id:pid,name:name,on:true};S.players.push(p);}
+    e.pid=pid;c.send({t:'welcome',pid:pid});this.push();return;
+  }
+  var me=this.player(e.pid);if(!me)return;var R=S.R,st=R&&R.step;
+  if(m.t==='start'){if(me.id===this.hostPid&&S.phase==='lobby'&&S.players.length===2)this.startMatch();return;}
+  if(m.t==='again'){if(me.id===this.hostPid&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});this.push();}return;}
+  if(S.phase!=='run'||!st)return;
+  if(m.t==='trap'){
+    if(me.id!==R.setter||st.traps||m.sid!==st.id)return;
+    var ds=m.dirs;if(!Array.isArray(ds))return;
+    var need=Math.max(0,st.cands.length-1),uniq=[];
+    ds.forEach(function(d){if(st.cands.indexOf(d)>=0&&uniq.indexOf(d)<0)uniq.push(d);});
+    if(uniq.length!==need)return;
+    this.setTraps(uniq);return;
+  }
+  if(m.t==='answer'){
+    if(me.id!==R.mover||st.qRes!=null||m.sid!==st.id||n<R.stunUntil)return;
+    st.qRes=(m.a===st.q.ans);if(st.qRes)R.stats.correct++;else R.stats.wrong++;
+    this.push();return;
+  }
+  if(m.t==='move'){
+    if(me.id!==R.mover||!st.traps||m.sid!==st.id||n<R.stunUntil||st.cands.indexOf(m.d)<0)return;
+    var gamble=st.qRes!==true;if(gamble)R.stats.gambles++;
+    var dd=DIRS[m.d],np=[R.pos[0]+dd[0],R.pos[1]+dd[1]];
+    if(st.traps.indexOf(m.d)>=0){
+      R.stats.traps++;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};
+      R.stunUntil=n+STUN_MS;
+      R.last={trap:st.traps,safe:st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0],from:st.pos};
+      this.newStep(n+STUN_MS);return;
+    }
+    R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble};if(gamble)R.stats.gambleWins++;
+    R.last=null;
+    if(np[0]===0){this.endRound(true);return;}
+    this.newStep(n);return;
+  }
+};
+Server.prototype.startMatch=function(){var S=this.S;S.round=0;S.times={};S.players.forEach(function(p){S.times[p.id]=[];});S.history=[];this.nextRound();};
+Server.prototype.nextRound=function(){
+  var S=this.S,ps=S.players;S.round++;var mi=(S.round-1)%2;
+  S.R={mover:ps[mi].id,setter:ps[1-mi].id,pos:START.slice(),stunUntil:0,ev:null,last:null,waited:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0},startAt:this.now()+READY_MS};
+  S.R.endAt=S.R.startAt+RUN_MS;S.phase='ready';this.push();
+};
+Server.prototype.newStep=function(at){
+  var R=this.S.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos),q:makeQ(this.used,++this.qid),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
+  if(R.step.cands.length<=1)R.step.traps=[];
+  this.push();
+};
+Server.prototype.setTraps=function(ds){var R=this.S.R,st=R.step,n=this.now();st.traps=ds;var w=Math.max(0,n-st.startAt);R.waited+=w;R.endAt+=w;this.push();};
+Server.prototype.endRound=function(done){
+  var S=this.S,R=S.R,n=this.now();
+  var t=done?(n-R.startAt-R.waited)/1000:RUN_MS/1000+R.pos[0]*5;
+  t=Math.round(t*10)/10;S.times[R.mover].push(t);
+  R.result={done:done,time:t,rowsLeft:R.pos[0]};S.history.push({round:S.round,mover:R.mover,done:done,time:t,stats:R.stats});
+  R.step=null;S.phase='roundEnd';S.until=n+ROUNDEND_MS;this.push();
+};
+Server.prototype.tick=function(){
+  var S=this.S,n=this.now(),R=S.R;
+  if(S.phase==='ready'&&n>=R.startAt){S.phase='run';this.newStep(n);return;}
+  if(S.phase==='run'){
+    if(n>=R.endAt){this.endRound(false);return;}
+    var st=R.step;if(st&&!st.traps&&n>st.setDl){var c=shuffle(st.cands.slice());st.auto=true;this.setTraps(c.slice(0,c.length-1));}
+    return;
+  }
+  if(S.phase==='roundEnd'&&n>S.until){
+    if(S.round>=ROUNDS){var ps=S.players,a=this.total(ps[0].id),b=this.total(ps[1].id);
+      if(a===b&&S.round<ROUNDS+4){this.nextRound();return;}
+      S.phase='end';S.mid=(S.mid||0)+1;S.winner=a===b?null:(a<b?ps[0].id:ps[1].id);this.push();return;}
+    this.nextRound();
+  }
+};
+Server.prototype.total=function(pid){return Math.round(this.S.times[pid].reduce(function(s,x){return s+x;},0)*10)/10;};
+Server.prototype.view=function(pid){
+  var S=this.S,R=S.R,n=this.now(),self=this;
+  var v={pid:pid,host:this.hostPid,phase:S.phase,round:S.round,total:ROUNDS,players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]:[]};})};
+  if(R&&(S.phase==='ready'||S.phase==='run'||S.phase==='roundEnd')){
+    v.R={mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats,last:R.last};
+    var st=R.step;
+    if(st){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
+      if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;}
+      if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo};if(st.qRes!=null)s.q.ans=st.q.ans;
+        if(st.qRes===true&&st.traps)s.safe=st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0];}
+      v.R.step=s;}
+  }
+  if(S.phase==='end'){v.winner=S.winner;v.mid=S.mid;v.history=S.history;}
+  return v;
+};
+Server.prototype.push=function(){var self=this;this.conns.forEach(function(e){if(e.pid){try{e.c.send({t:'view',v:self.view(e.pid)});}catch(err){}}});};
+/*CORE-END*/
+</script>
+<script>
+function $(s){return document.querySelector(s);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function lsGet(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function getPid(){var p=null;try{p=sessionStorage.getItem('bel_pid');}catch(e){}if(!p){p='p'+Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('bel_pid',p);}catch(e){}}return p;}
+var peer=null,conn=null,server=null,isHost=false,roomCode='',myPid=getPid(),myName='',V=null,stageKey='',stepKey='',lastEv=null,rcv=0,trapPick=[];
+var localConn={send:function(m){var c=JSON.parse(JSON.stringify(m));setTimeout(function(){onMsg(c);},0);}};
+function toast(s){var t=$('#toast');t.textContent=s;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},3000);}
+function ovl(s){var o=$('#ovl');if(s){o.innerHTML=s;o.classList.add('on');}else o.classList.remove('on');}
+function show(id){Array.prototype.forEach.call(document.querySelectorAll('.screen'),function(e){e.classList.toggle('on',e.id===id);});}
+function send(m){if(isHost&&server)server.handle(localConn,JSON.parse(JSON.stringify(m)));else if(conn&&conn.open)conn.send(m);}
+function nm(pid){if(!V)return '؟';for(var i=0;i<V.players.length;i++)if(V.players[i].id===pid)return V.players[i].name;return '؟';}
+function flash(col){var f=$('#flash');f.style.background=col;f.classList.add('on');setTimeout(function(){f.classList.remove('on');},60);try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}}
+var ARROW={l:'↖️',u:'⬆️',r:'↗️'},DNAME={l:'أعلى اليسار',u:'للأمام',r:'أعلى اليمين'};
+
+$('#hname').value=lsGet('bel_name','');
+function needName(){myName=$('#hname').value.trim();if(!myName){toast('اكتب اسمك أولاً');return false;}lsSet('bel_name',myName);return true;}
+function peerOk(){if(typeof Peer==='undefined'){toast('تعذّر تحميل مكتبة الاتصال — تحقق من الإنترنت ثم أعد فتح الصفحة');return false;}return true;}
+function mkCode(){var a='ABCDEFGHJKMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
+$('#bhost').onclick=function(){
+  if(!needName()||!peerOk())return;isHost=true;roomCode=mkCode();ovl('⏳ جارٍ إنشاء الغرفة...');
+  peer=new Peer('bel-'+roomCode,{debug:0});
+  peer.on('open',function(){ovl('');if(!server){server=new Server(myPid);server.connect(localConn);}send({t:'hello',name:myName,pid:myPid});});
+  peer.on('connection',function(c){c.on('open',function(){server.connect(c);});c.on('data',function(m){server.handle(c,m);});
+    c.on('close',function(){server.disconnect(c);});c.on('error',function(){server.disconnect(c);});});
+  peer.on('disconnected',function(){try{peer.reconnect();}catch(e){}});
+  peer.on('error',function(e){if(e.type==='unavailable-id'&&!server){peer.destroy();$('#bhost').onclick();}else if(!V){ovl('');toast('خطأ في الاتصال: '+e.type);}});
+};
+$('#bjoin').onclick=function(){
+  if(!needName()||!peerOk())return;var code=$('#hcode').value.trim().toUpperCase();
+  if(code.length!==5){toast('رمز الغرفة من 5 أحرف');return;}
+  roomCode=code;isHost=false;ovl('⏳ جارٍ الاتصال بالغرفة...');
+  peer=new Peer({debug:0});peer.on('open',connectHost);
+  peer.on('disconnected',function(){try{peer.reconnect();}catch(e){}});
+  peer.on('error',function(e){if(e.type==='peer-unavailable'){if(V)scheduleRetry();else{ovl('');toast('الغرفة غير موجودة أو أُغلقت');}}else if(!V){ovl('');toast('خطأ في الاتصال: '+e.type);}});
+};
+var retryT=null;
+function connectHost(){
+  conn=peer.connect('bel-'+roomCode,{reliable:true,serialization:'json'});
+  conn.on('open',function(){ovl('');clearTimeout(retryT);conn.send({t:'hello',name:myName,pid:myPid});});
+  conn.on('data',onMsg);
+  conn.on('close',function(){if(V&&V.phase!=='end')ovl('📡 انقطع الاتصال بالمضيف<br><small>جارٍ إعادة المحاولة...</small>');scheduleRetry();});
+}
+function scheduleRetry(){clearTimeout(retryT);retryT=setTimeout(function(){if(peer&&!peer.destroyed){if(peer.disconnected){try{peer.reconnect();}catch(e){}}connectHost();}},3000);}
+
+function onMsg(m){
+  if(!m)return;if(m.t==='welcome'){myPid=m.pid;return;}
+  if(m.t==='err'){ovl('');toast(m.msg);return;}
+  if(m.t!=='view')return;V=m.v;rcv=performance.now();render();
+}
+function since(){return performance.now()-rcv;}
+function render(){
+  if(V.phase==='lobby'){stageKey='';show('lobby');renderLobby();return;}
+  if(V.phase==='end'){stageKey='';show('end');renderEnd();return;}
+  show('game');
+  var me=null,op=null;V.players.forEach(function(p){if(p.id===myPid)me=p;else op=p;});
+  $('#hround').innerHTML='الجولة <b>'+V.round+'</b> من '+V.total;
+  $('#hscore').innerHTML=me&&op?'زمنك <b>'+me.tot+'</b> ث — <b>'+op.tot+'</b> '+esc(op.name):'';
+  var R=V.R,role=R.mover===myPid?'m':'s',k=V.phase+':'+V.round+':'+role;
+  if(k!==stageKey){stageKey=k;stepKey='';lastEv=R.ev?R.ev.id:null;
+    if(V.phase==='ready')buildReady(role);else if(V.phase==='run')buildRun(role);else buildRoundEnd();}
+  if(V.phase==='run')updateRun(role);
+}
+function renderLobby(){
+  $('#lcode').textContent=roomCode;var host=myPid===V.host;
+  $('#lplayers').innerHTML=V.players.map(function(p){return '<div class="pl"><span>'+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('')+(V.players.length<2?'<div class="pl" style="color:var(--mu)">بانتظار الخصم...</div>':'');
+  $('#lmsg').textContent=V.players.length<2?'اللعبة للاعبَين، كلٌّ في هاتفه':'';
+  var b=$('#lstart');b.style.display=host?'block':'none';b.disabled=V.players.length!==2;
+  $('#lhint').textContent=host?'هاتفك يدير المباراة: أبقِ الصفحة مفتوحة والشاشة مضاءة.':'بانتظار المضيف لبدء المباراة...';
+}
+$('#lstart').onclick=function(){send({t:'start'});};
+
+function boardHtml(id){var h='<div class="board" id="'+id+'" style="grid-template-columns:repeat('+COLS+',1fr)">';
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++)h+='<div class="c" data-r="'+r+'" data-c="'+c+'"></div>';return h+'</div>';}
+function cell(id,r,c){return document.querySelector('#'+id+' [data-r="'+r+'"][data-c="'+c+'"]');}
+function dirOf(pos,r,c){for(var d in DIRS)if(pos[0]+DIRS[d][0]===r&&pos[1]+DIRS[d][1]===c)return d;return null;}
+// paint: o={pos,cands,traps,safe,stun,go,picks}
+function paint(id,o){
+  Array.prototype.forEach.call(document.querySelectorAll('#'+id+' .c'),function(el){
+    var r=+el.dataset.r,c=+el.dataset.c,cls='c',tx='';
+    if(r===0){cls+=' fin';tx='🏁';}
+    var d=o.cands?dirOf(o.pos,r,c):null;
+    if(d&&o.cands.indexOf(d)>=0){cls+=' cand';tx=ARROW[d];
+      if(o.traps&&o.traps.indexOf(d)>=0){cls+=' tr';tx='🪤';}
+      else if(o.picks&&o.picks.indexOf(d)>=0){cls+=' tr';tx='🪤';}
+      else if(o.safe===d||(o.traps&&o.traps.indexOf(d)<0)){cls+=' safe';}
+      if(o.go)cls+=' go';}
+    if(o.pos[0]===r&&o.pos[1]===c){cls+=' me';tx=o.stun?'😵':'🏃';if(o.stun)cls+=' stun';}
+    if(el.className!==cls)el.className=cls;if(el.textContent!==tx)el.textContent=tx;});
+}
+function buildReady(role){
+  var R=V.R;
+  $('#stage').innerHTML='<div class="card '+(role==='m'?'me':'enemy')+'"><h3>'+(role==='m'?'🏃 أنت العدّاء في هذه الجولة':'🪤 أنت واضع الفخاخ في هذه الجولة')+'</h3>'+
+  '<p class="legend" style="text-align:center">'+(role==='m'?'حُلّ التحدي ليُكشف لك الطريق الآمن، أو جازف وتحرك فوراً.':'في كل خطوة اختر اتجاهين من الثلاثة لتضع فيهما فخّين، والثالث يبقى آمناً. لديك 5 ثوانٍ لكل خطوة، وساعة العدّاء متوقفة وأنت تضعها — لكنه يرى التحدي ويفكر فيه، فكلما أسرعت قلّ وقت تفكيره.')+'</p>'+
+  '<div class="win" id="cd">3</div>'+boardHtml('rb')+'</div>';
+  paint('rb',{pos:R.pos});
+}
+function buildRun(role){
+  var h;
+  if(role==='m'){
+    h='<div class="card me"><div class="bar"><span>🏃 الميدان</span><span>⏱ <span class="t" id="tl">--</span></span></div>'+
+      '<div class="q" id="qbox"></div>'+boardHtml('rb')+
+      '<div class="pad" id="pad"><button data-d="l">↖️</button><button data-d="u">⬆️</button><button data-d="r">↗️</button></div>'+
+      '<div class="status" id="st"></div></div>';
+  }else{
+    h='<div class="card enemy"><div class="bar"><span>🪤 لوحة الفخاخ</span><span>⏱ <span class="t" id="tl">--</span></span></div>'+
+      '<div class="status" id="st"></div>'+boardHtml('rb')+
+      '<p class="legend" style="text-align:center">اضغط على المربعات الثلاثة أمام العدّاء لوضع الفخاخ — اترك مربعاً واحداً آمناً.</p></div>';
+  }
+  $('#stage').innerHTML=h;
+  if(role==='m'){
+    Array.prototype.forEach.call(document.querySelectorAll('#pad button'),function(b){
+      var go=function(ev){ev.preventDefault();doMove(b.dataset.d);};b.addEventListener('touchstart',go,{passive:false});b.addEventListener('mousedown',go);});
+    Array.prototype.forEach.call(document.querySelectorAll('#rb .c'),function(el){el.onclick=function(){var s=V.R.step;if(!s)return;var d=dirOf(s.pos,+el.dataset.r,+el.dataset.c);if(d)doMove(d);};});
+  }else{
+    Array.prototype.forEach.call(document.querySelectorAll('#rb .c'),function(el){el.onclick=function(){
+      var s=V.R.step;if(!s||s.trapsSet)return;var d=dirOf(s.pos,+el.dataset.r,+el.dataset.c);if(!d||s.cands.indexOf(d)<0)return;
+      var i=trapPick.indexOf(d);if(i>=0)trapPick.splice(i,1);else trapPick.push(d);
+      var need=s.cands.length-1;if(trapPick.length>need)trapPick.shift();
+      if(trapPick.length===need){send({t:'trap',sid:s.id,dirs:trapPick.slice()});}
+      updateRun('s');};});
+  }
+}
+function doMove(d){var R=V.R,s=R.step;if(!s||!s.trapsSet||R.stun-since()>0||s.cands.indexOf(d)<0)return;send({t:'move',sid:s.id,d:d});}
+document.addEventListener('keydown',function(e){if(!V||V.phase!=='run'||V.R.mover!==myPid)return;var d={ArrowUp:'u',ArrowLeft:'l',ArrowRight:'r'}[e.key];if(d){e.preventDefault();doMove(d);}});
+function buildQ(s){
+  var q=s.q,b=$('#qbox');
+  b.innerHTML='<span class="qcat">'+esc(q.cat)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>';
+  Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(btn){btn.onclick=function(){
+    if(V.R.step.qRes!=null||V.R.stun-since()>0)return;Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(x){x.disabled=true;});
+    send({t:'answer',sid:s.id,a:+btn.dataset.i});};});
+}
+function updateRun(role){
+  var R=V.R,s=R.step,stun=R.stun-since()>0;
+  if(R.ev&&R.ev.id!==lastEv){lastEv=R.ev.id;
+    if(R.ev.t==='trap'){flash('#ff4757');var ce=cell('rb',R.ev.at[0],R.ev.at[1]);if(ce){ce.classList.remove('hit');void ce.offsetWidth;ce.classList.add('hit');}}
+    else if(R.ev.gamble)flash('#2ecc71');}
+  if(!s){paint('rb',{pos:R.pos});return;}
+  if(s.id!==stepKey){stepKey=s.id;trapPick=[];if(role==='m')buildQ(s);}
+  var st=$('#st');
+  if(role==='m'){
+    if(s.qRes!=null){var bs=document.querySelectorAll('#qbox .opts button');Array.prototype.forEach.call(bs,function(x,i){x.disabled=true;x.className=i===s.q.ans?'ok':'';});}
+    var canGo=s.trapsSet&&!stun;
+    paint('rb',{pos:R.pos,cands:stun?null:s.cands,safe:s.safe,go:canGo,stun:stun});
+    Array.prototype.forEach.call(document.querySelectorAll('#pad button'),function(b){var d=b.dataset.d;b.disabled=!canGo||s.cands.indexOf(d)<0;b.className=s.safe===d?'safe':'';});
+    var t;
+    if(stun)t='💥 وقعت في فخ! انتظر حتى تستعيد توازنك...';
+    else if(!s.trapsSet)t='🪤 العدو يضع الفخاخ الآن... حُلّ التحدي بسرعة';
+    else if(s.qRes===true)t='✅ أصبت! الطريق الآمن: '+ARROW[s.safe]+' '+DNAME[s.safe];
+    else if(s.qRes===false)t='❌ أخطأت — خمّن الاتجاه وجازف!';
+    else t='🎲 الفخاخ جاهزة — حُلّ التحدي أو جازف الآن';
+    if(st.textContent!==t)st.textContent=t;
+  }else{
+    var picks=s.trapsSet?null:trapPick;
+    paint('rb',{pos:R.pos,cands:stun?null:s.cands,traps:s.traps,picks:picks,go:!s.trapsSet&&!stun,stun:stun});
+    var t2;
+    if(stun)t2='💥 وقع في فخك! مشلول للحظات';
+    else if(!s.trapsSet)t2='🪤 ضع '+(s.cands.length-1)+' '+(s.cands.length-1===1?'فخاً':'فخّين')+' الآن! ('+Math.max(0,Math.ceil((s.setLeft-since())/1000))+' ث)';
+    else t2={thinking:'🧠 يفكّر في: '+s.qCat,solved:'✅ حلّ التحدي — يعرف الطريق الآمن',failed:'❌ أخطأ — سيخمّن'}[s.qState]+(s.auto?' • (وُضعت تلقائياً)':'');
+    if(st.textContent!==t2)st.textContent=t2;
+  }
+}
+function buildRoundEnd(){
+  var R=V.R,r=R.result,iRan=R.mover===myPid,sx=R.stats;
+  var head=r.done?(iRan?'🏁 وصلت في '+r.time+' ث':'🏁 '+esc(nm(R.mover))+' وصل في '+r.time+' ث'):(iRan?'⏱ انتهى الوقت — بقي '+r.rowsLeft+' صفوف':'🪤 أوقفته! بقي له '+r.rowsLeft+' صفوف');
+  $('#stage').innerHTML='<div class="card '+(iRan?'me':'enemy')+'"><h3>'+head+'</h3>'+
+    '<p class="legend" style="text-align:center">الزمن المحتسب: <b>'+r.time+'</b> ث'+(r.done?'':' (90 + 5 لكل صف متبقٍّ)')+'<br>تحديات صحيحة '+sx.correct+' • خاطئة '+sx.wrong+' • مجازفات ناجحة '+sx.gambleWins+' من '+sx.gambles+' • فخاخ '+sx.traps+'</p>'+
+    '<p class="win" style="font-size:18px">🔁 الجولة القادمة: '+(iRan?'أنت تضع الفخاخ':'أنت تجري')+'</p></div>';
+}
+function renderEnd(){
+  var ps=V.players.slice().sort(function(a,b){return a.tot-b.tot;});
+  var h='<p class="win">'+(V.winner?(V.winner===myPid?'🏆 فزت!':'🏆 '+esc(nm(V.winner))+' يفوز'):'🤝 تعادل')+'</p>';
+  h+='<table><tr><th>اللاعب</th><th>مجموع الزمن</th><th>الجولات</th></tr>'+ps.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+'</td></tr>';}).join('')+'</table>';
+  h+='<p class="legend">'+V.history.map(function(x){return 'الجولة '+x.round+': '+esc(nm(x.mover))+(x.done?' وصل في ':' لم يصل — ')+x.time+' ث • مجازفات ناجحة '+x.stats.gambleWins+'/'+x.stats.gambles+' • فخاخ '+x.stats.traps;}).join('<br>')+'</p>';
+  h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
+  $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
+}
+function loop(){
+  if(V&&V.R&&(V.phase==='run'||V.phase==='ready')){
+    var tl=$('#tl');if(tl){var s=Math.max(0,Math.ceil((V.R.left-since())/1000));if(tl.textContent!==String(s))tl.textContent=s;}
+    var cd=$('#cd');if(cd){var c=Math.max(0,Math.ceil((V.R.toStart-since())/1000));cd.textContent=c>0?c:'انطلق!';}
+    if(V.phase==='run'){var role=V.R.mover===myPid?'m':'s';
+      var stunNow=V.R.stun-since()>0;if(stunNow!==loop._st||role==='s'){loop._st=stunNow;updateRun(role);}}
+  }
+  requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+window.addEventListener('beforeunload',function(e){if(isHost&&V&&V.phase!=='lobby'&&V.phase!=='end'){e.preventDefault();e.returnValue='';}});
+</script>
+</body>
+</html>
