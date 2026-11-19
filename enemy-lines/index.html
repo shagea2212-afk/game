@@ -83,13 +83,15 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
     ✅ إذا حلّ العدّاء التحدي يُضاء له الاتجاه الآمن بالأخضر.<br>
     🎲 أو يجازف ويتحرك فوراً بالتخمين، وهذا أسرع إن أصاب.<br>
     💥 الفخ يُسقطه مكانه ويشلّه ثانيتين ونصفاً، ثم تبدأ خطوة جديدة.<br>
-    🔁 تتبادلان الأدوار كل جولة، ومجموع الأزمنة الأقل يفوز.
+    🔁 تتبادلان الأدوار كل جولة، ومجموع الأزمنة الأقل يفوز.<br>
+    👥 الفرق من 2 ضد 2 إلى 6 ضد 6: كل لاعب يواجه لاعباً من الفريق الآخر مواجهةً كاملة يلعبها بنفسه، والمواجهات تجري في الوقت نفسه. ومجموع أزمنة الفريق الأقل يفوز.
   </div>
 </div>
 
 <div class="screen" id="lobby">
-  <div class="card"><div class="sub" style="margin:0">رمز الغرفة — أرسله لخصمك</div><div class="code" id="lcode">-----</div></div>
-  <div class="card"><h3>اللاعبون</h3><div id="lplayers"></div></div>
+  <div class="card"><div class="sub" style="margin:0">رمز الغرفة — أرسله للاعبين</div><div class="code" id="lcode">-----</div></div>
+  <div class="card" id="lmode"></div>
+  <div class="card"><h3>اللاعبون</h3><div id="lplayers"></div><div id="lteam"></div></div>
   <div class="status" id="lmsg"></div>
   <button class="btn red" id="lstart">ابدأ المباراة</button>
   <p class="sub" id="lhint"></p>
@@ -105,7 +107,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 /*CORE-START*/
-var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=2500,ROUNDS=4,READY_MS=3000,ROUNDEND_MS=6000;
+var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=2500,READY_MS=3000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -137,16 +139,25 @@ function makeQ(used,id){
   return q;
 }
 function candidates(pos){var out=[];DORDER.forEach(function(d){var r=pos[0]+DIRS[d][0],c=pos[1]+DIRS[d][1];if(r>=0&&c>=0&&c<COLS)out.push(d);});return out;}
-function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],round:0};var self=this;this.iv=setInterval(function(){self.tick();},150);}
+function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair'};var self=this;this.iv=setInterval(function(){self.tick();},150);}
 Server.prototype.now=function(){return Date.now();};
 Server.prototype.connect=function(c){this.conns.push({c:c,pid:null});};
 Server.prototype.entry=function(c){for(var i=0;i<this.conns.length;i++)if(this.conns[i].c===c)return this.conns[i];return null;};
 Server.prototype.player=function(pid){var ps=this.S.players;for(var i=0;i<ps.length;i++)if(ps[i].id===pid)return ps[i];return null;};
+Server.prototype.nm=function(pid){var p=this.player(pid);return p?p.name:'؟';};
 Server.prototype.disconnect=function(c){
   var e=this.entry(c);if(!e)return;this.conns.splice(this.conns.indexOf(e),1);
   var p=this.player(e.pid);if(!p)return;if(this.conns.some(function(x){return x.pid===p.id;}))return;
   p.on=false;if(this.S.phase==='lobby'&&p.id!==this.hostPid)this.S.players.splice(this.S.players.indexOf(p),1);this.push();
 };
+Server.prototype.team=function(t){return this.S.players.filter(function(p){return p.team===t;});};
+Server.prototype.autoTeam=function(){var a=this.team(0).length,b=this.team(1).length;return a<=b?0:1;};
+Server.prototype.lobbyMsg=function(){
+  var S=this.S,N=S.size,a=this.team(0).length,b=this.team(1).length;
+  if(a===N&&b===N)return '';
+  return 'مطلوب '+N+' ضد '+N+': الأحمر '+a+'/'+N+' — الأزرق '+b+'/'+N;
+};
+Server.prototype.duelOf=function(pid){var ds=this.S.duels||[];for(var i=0;i<ds.length;i++)if(ds[i].a===pid||ds[i].b===pid)return ds[i];return null;};
 Server.prototype.handle=function(c,m){
   if(!m||typeof m!=='object')return;
   var S=this.S,e=this.entry(c),n=this.now();if(!e)return;
@@ -155,21 +166,24 @@ Server.prototype.handle=function(c,m){
     var p=this.player(pid);
     if(p){p.on=true;if(S.phase==='lobby')p.name=name;}
     else{if(S.phase!=='lobby'){c.send({t:'err',msg:'المباراة جارية بالفعل'});return;}
-      if(S.players.length>=2){c.send({t:'err',msg:'الغرفة ممتلئة (لاعبان فقط)'});return;}
-      p={id:pid,name:name,on:true};S.players.push(p);}
+      if(S.players.length>=12){c.send({t:'err',msg:'الغرفة ممتلئة (12 لاعباً كحد أقصى)'});return;}
+      p={id:pid,name:name,on:true,team:this.autoTeam()};S.players.push(p);}
     e.pid=pid;c.send({t:'welcome',pid:pid});this.push();return;
   }
-  var me=this.player(e.pid);if(!me)return;var R=S.R,st=R&&R.step;
-  if(m.t==='start'){if(me.id===this.hostPid&&S.phase==='lobby'&&S.players.length===2)this.startMatch();return;}
-  if(m.t==='again'){if(me.id===this.hostPid&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});this.push();}return;}
-  if(S.phase!=='run'||!st)return;
+  var me=this.player(e.pid);if(!me)return;var isHost=me.id===this.hostPid;
+  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;var sz=parseInt(m.size,10);if(sz>=1&&sz<=6)S.size=sz;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
+  if(m.t==='team'){if(S.phase!=='lobby')return;me.team=m.team===1?1:0;this.push();return;}
+  if(m.t==='start'){if(isHost&&S.phase==='lobby'&&!this.lobbyMsg())this.startMatch();return;}
+  if(m.t==='again'){if(isHost&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});S.duels=null;this.push();}return;}
+  if(S.phase!=='match')return;
+  var D=this.duelOf(me.id);if(!D||D.phase!=='run')return;var R=D.R,st=R.step;if(!st)return;
   if(m.t==='trap'){
     if(me.id!==R.setter||st.traps||m.sid!==st.id)return;
     var ds=m.dirs;if(!Array.isArray(ds))return;
     var need=Math.max(0,st.cands.length-1),uniq=[];
     ds.forEach(function(d){if(st.cands.indexOf(d)>=0&&uniq.indexOf(d)<0)uniq.push(d);});
     if(uniq.length!==need)return;
-    this.setTraps(uniq);return;
+    this.setTraps(D,uniq);return;
   }
   if(m.t==='answer'){
     if(me.id!==R.mover||st.qRes!=null||m.sid!==st.id||n<R.stunUntil)return;
@@ -181,65 +195,87 @@ Server.prototype.handle=function(c,m){
     var gamble=st.qRes!==true;if(gamble)R.stats.gambles++;
     var dd=DIRS[m.d],np=[R.pos[0]+dd[0],R.pos[1]+dd[1]];
     if(st.traps.indexOf(m.d)>=0){
-      R.stats.traps++;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};
-      R.stunUntil=n+STUN_MS;
-      R.last={trap:st.traps,safe:st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0],from:st.pos};
-      this.newStep(n+STUN_MS);return;
+      R.stats.traps++;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};R.stunUntil=n+STUN_MS;
+      this.newStep(D,n+STUN_MS);return;
     }
     R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble};if(gamble)R.stats.gambleWins++;
-    R.last=null;
-    if(np[0]===0){this.endRound(true);return;}
-    this.newStep(n);return;
+    if(np[0]===0){this.endRound(D,true);return;}
+    this.newStep(D,n);return;
   }
 };
-Server.prototype.startMatch=function(){var S=this.S;S.round=0;S.times={};S.players.forEach(function(p){S.times[p.id]=[];});S.history=[];this.nextRound();};
-Server.prototype.nextRound=function(){
-  var S=this.S,ps=S.players;S.round++;var mi=(S.round-1)%2;
-  S.R={mover:ps[mi].id,setter:ps[1-mi].id,pos:START.slice(),stunUntil:0,ev:null,last:null,waited:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0},startAt:this.now()+READY_MS};
-  S.R.endAt=S.R.startAt+RUN_MS;S.phase='ready';this.push();
+Server.prototype.startMatch=function(){
+  var S=this.S;S.times={};S.players.forEach(function(p){S.times[p.id]=[];});S.history=[];
+  S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});
+  S.rotation=0;S.rotations=(S.size>1&&S.format==='league')?S.size:1;S.extra=0;
+  S.phase='match';this.startRotation();
 };
-Server.prototype.newStep=function(at){
-  var R=this.S.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos),q:makeQ(this.used,++this.qid),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
+Server.prototype.startRotation=function(){
+  var S=this.S,N=S.size,k=S.rotation,self=this;S.duels=[];S.restUntil=0;
+  for(var i=0;i<N;i++){var D={id:k*10+i,a:S.A[i],b:S.B[(i+k)%N],round:0,rounds:N===1?4:2,phase:'ready'};S.duels.push(D);}
+  S.duels.forEach(function(D){self.nextRound(D);});this.push();
+};
+Server.prototype.nextRound=function(D){
+  D.round++;var mi=(D.round-1)%2,ps=[D.a,D.b];
+  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0},startAt:this.now()+READY_MS};
+  D.R.endAt=D.R.startAt+RUN_MS;D.phase='ready';this.push();
+};
+Server.prototype.newStep=function(D,at){
+  var R=D.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos),q:makeQ(this.used,++this.qid),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
   if(R.step.cands.length<=1)R.step.traps=[];
   this.push();
 };
-Server.prototype.setTraps=function(ds){var R=this.S.R,st=R.step,n=this.now();st.traps=ds;var w=Math.max(0,n-st.startAt);R.waited+=w;R.endAt+=w;this.push();};
-Server.prototype.endRound=function(done){
-  var S=this.S,R=S.R,n=this.now();
+Server.prototype.setTraps=function(D,ds){var R=D.R,st=R.step,n=this.now();st.traps=ds;var w=Math.max(0,n-st.startAt);R.waited+=w;R.endAt+=w;this.push();};
+Server.prototype.endRound=function(D,done){
+  var S=this.S,R=D.R,n=this.now();
   var t=done?(n-R.startAt-R.waited)/1000:RUN_MS/1000+R.pos[0]*5;
   t=Math.round(t*10)/10;S.times[R.mover].push(t);
-  R.result={done:done,time:t,rowsLeft:R.pos[0]};S.history.push({round:S.round,mover:R.mover,done:done,time:t,stats:R.stats});
-  R.step=null;S.phase='roundEnd';S.until=n+ROUNDEND_MS;this.push();
+  R.result={done:done,time:t,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,done:done,time:t,stats:R.stats});
+  R.step=null;D.phase='roundEnd';D.until=n+ROUNDEND_MS;this.push();
 };
+Server.prototype.sum=function(ids){var self=this;return Math.round(ids.reduce(function(s,id){return s+self.total(id);},0)*10)/10;};
 Server.prototype.tick=function(){
-  var S=this.S,n=this.now(),R=S.R;
-  if(S.phase==='ready'&&n>=R.startAt){S.phase='run';this.newStep(n);return;}
-  if(S.phase==='run'){
-    if(n>=R.endAt){this.endRound(false);return;}
-    var st=R.step;if(st&&!st.traps&&n>st.setDl){var c=shuffle(st.cands.slice());st.auto=true;this.setTraps(c.slice(0,c.length-1));}
-    return;
-  }
-  if(S.phase==='roundEnd'&&n>S.until){
-    if(S.round>=ROUNDS){var ps=S.players,a=this.total(ps[0].id),b=this.total(ps[1].id);
-      if(a===b&&S.round<ROUNDS+4){this.nextRound();return;}
-      S.phase='end';S.mid=(S.mid||0)+1;S.winner=a===b?null:(a<b?ps[0].id:ps[1].id);this.push();return;}
-    this.nextRound();
+  var S=this.S,n=this.now(),self=this;if(S.phase!=='match')return;
+  S.duels.forEach(function(D){var R=D.R;
+    if(D.phase==='ready'&&n>=R.startAt){D.phase='run';self.newStep(D,n);}
+    else if(D.phase==='run'){
+      if(n>=R.endAt){self.endRound(D,false);return;}
+      var st=R.step;if(st&&!st.traps&&n>st.setDl){var c=shuffle(st.cands.slice());st.auto=true;self.setTraps(D,c.slice(0,c.length-1));}
+    }else if(D.phase==='roundEnd'&&n>D.until){
+      if(D.round<D.rounds)self.nextRound(D);
+      else if(S.size===1&&self.total(D.a)===self.total(D.b)&&D.rounds<12){D.rounds+=2;self.nextRound(D);}
+      else{D.phase='done';self.push();}
+    }});
+  if(S.duels.every(function(D){return D.phase==='done';})){
+    if(!S.restUntil){S.restUntil=n+(S.rotation+1<S.rotations?5000:2500);this.push();return;}
+    if(n<S.restUntil)return;
+    if(S.rotation+1<S.rotations){S.rotation++;this.startRotation();return;}
+    var a=this.sum(S.A),b=this.sum(S.B);
+    S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a<b?0:1);this.push();
   }
 };
-Server.prototype.total=function(pid){return Math.round(this.S.times[pid].reduce(function(s,x){return s+x;},0)*10)/10;};
+Server.prototype.total=function(pid){return Math.round((this.S.times[pid]||[]).reduce(function(s,x){return s+x;},0)*10)/10;};
 Server.prototype.view=function(pid){
-  var S=this.S,R=S.R,n=this.now(),self=this;
-  var v={pid:pid,host:this.hostPid,phase:S.phase,round:S.round,total:ROUNDS,players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]:[]};})};
-  if(R&&(S.phase==='ready'||S.phase==='run'||S.phase==='roundEnd')){
-    v.R={mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats,last:R.last};
-    var st=R.step;
-    if(st){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
-      if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;}
-      if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo};if(st.qRes!=null)s.q.ans=st.q.ans;
-        if(st.qRes===true&&st.traps)s.safe=st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0];}
-      v.R.step=s;}
+  var S=this.S,n=this.now(),self=this;
+  var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,
+    players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]||[]:[]};})};
+  if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
+  if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
+  if(S.phase==='match'){
+    v.duels=S.duels.map(function(D){return {a:D.a,b:D.b,round:D.round,rounds:D.rounds,phase:D.phase,mover:D.R.mover,row:D.R.pos[0]};});
+    v.rest=S.restUntil?Math.max(0,S.restUntil-n):0;
+    var D=this.duelOf(pid);
+    if(D){var R=D.R;v.D={phase:D.phase,round:D.round,rounds:D.rounds,a:D.a,b:D.b};
+      if(D.phase!=='done'){
+        v.D.R={mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
+        var st=R.step;
+        if(st&&D.phase==='run'){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
+          if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;}
+          if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo};if(st.qRes!=null)s.q.ans=st.q.ans;
+            if(st.qRes===true&&st.traps)s.safe=st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0];}
+          v.D.R.step=s;}
+      }}
   }
-  if(S.phase==='end'){v.winner=S.winner;v.mid=S.mid;v.history=S.history;}
+  if(S.phase==='end'){v.winTeam=S.winTeam;v.mid=S.mid;v.history=S.history;v.A=S.A;v.B=S.B;}
   return v;
 };
 Server.prototype.push=function(){var self=this;this.conns.forEach(function(e){if(e.pid){try{e.c.send({t:'view',v:self.view(e.pid)});}catch(err){}}});};
@@ -294,26 +330,53 @@ function scheduleRetry(){clearTimeout(retryT);retryT=setTimeout(function(){if(pe
 function onMsg(m){
   if(!m)return;if(m.t==='welcome'){myPid=m.pid;return;}
   if(m.t==='err'){ovl('');toast(m.msg);return;}
-  if(m.t!=='view')return;V=m.v;rcv=performance.now();render();
+  if(m.t!=='view')return;V=m.v;rcv=performance.now();if(V.D){V.R=V.D.R;V.round=V.D.round;V.total=V.D.rounds;}render();
 }
 function since(){return performance.now()-rcv;}
+function dph(){return V&&V.phase==='match'&&V.D?V.D.phase:null;}
+var TEAMN=['الأحمر','الأزرق'];
+function teamOf(pid){for(var i=0;i<V.players.length;i++)if(V.players[i].id===pid)return V.players[i].team;return 0;}
 function render(){
   if(V.phase==='lobby'){stageKey='';show('lobby');renderLobby();return;}
   if(V.phase==='end'){stageKey='';show('end');renderEnd();return;}
-  show('game');
-  var me=null,op=null;V.players.forEach(function(p){if(p.id===myPid)me=p;else op=p;});
-  $('#hround').innerHTML='الجولة <b>'+V.round+'</b> من '+V.total;
-  $('#hscore').innerHTML=me&&op?'زمنك <b>'+me.tot+'</b> ث — <b>'+op.tot+'</b> '+esc(op.name):'';
-  var R=V.R,role=R.mover===myPid?'m':'s',k=V.phase+':'+V.round+':'+role;
+  show('game');var ph=dph();
+  var rot=V.rotations>1?' • الدورة '+(V.rotation+1)+'/'+V.rotations:'';
+  $('#hround').innerHTML=ph&&ph!=='done'?'الجولة <b>'+V.round+'</b> من '+V.total+rot:'⏳'+rot;
+  if(V.size===1){var me=null,op=null;V.players.forEach(function(p){if(p.id===myPid)me=p;else op=p;});
+    $('#hscore').innerHTML=me&&op?'زمنك <b>'+me.tot+'</b> ث — <b>'+op.tot+'</b> '+esc(op.name):'';}
+  else{var mt=teamOf(myPid);$('#hscore').innerHTML='فريقك <b>'+V.teamTot[mt]+'</b> ث — <b>'+V.teamTot[1-mt]+'</b> ث';}
+  if(!ph||ph==='done'){var kd='wait:'+V.rotation;if(stageKey!==kd){stageKey=kd;}buildWait();return;}
+  var R=V.R,role=R.mover===myPid?'m':'s',k=ph+':'+V.rotation+':'+V.round+':'+role;
   if(k!==stageKey){stageKey=k;stepKey='';lastEv=R.ev?R.ev.id:null;
-    if(V.phase==='ready')buildReady(role);else if(V.phase==='run')buildRun(role);else buildRoundEnd();}
-  if(V.phase==='run')updateRun(role);
+    if(ph==='ready')buildReady(role);else if(ph==='run')buildRun(role);else buildRoundEnd();}
+  if(ph==='run')updateRun(role);
+}
+function buildWait(){
+  var h='<div class="card"><h3>✅ انتهت مواجهتك</h3><p class="legend" style="text-align:center">'+(V.rest?(V.rotation+1<V.rotations?'الدورة التالية بعد لحظات — ستواجه خصماً جديداً':'جارٍ احتساب النتيجة...'):'بانتظار انتهاء المواجهات الأخرى')+'</p><table><tr><th>المواجهة</th><th>الحالة</th></tr>';
+  V.duels.forEach(function(d){h+='<tr><td>🔴 '+esc(nm(d.a))+' ضد 🔵 '+esc(nm(d.b))+'</td><td>'+(d.phase==='done'?'✅ انتهت':'الجولة '+d.round+'/'+d.rounds+' • 🏃 '+esc(nm(d.mover))+' — بقي '+d.row+' صفوف')+'</td></tr>';});
+  h+='</table>';
+  if(V.size>1)h+='<p class="win" style="font-size:17px;margin-top:10px">الأحمر '+V.teamTot[0]+' ث — الأزرق '+V.teamTot[1]+' ث</p>';
+  $('#stage').innerHTML=h+'</div>';
 }
 function renderLobby(){
   $('#lcode').textContent=roomCode;var host=myPid===V.host;
-  $('#lplayers').innerHTML=V.players.map(function(p){return '<div class="pl"><span>'+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('')+(V.players.length<2?'<div class="pl" style="color:var(--mu)">بانتظار الخصم...</div>':'');
-  $('#lmsg').textContent=V.players.length<2?'اللعبة للاعبَين، كلٌّ في هاتفه':'';
-  var b=$('#lstart');b.style.display=host?'block':'none';b.disabled=V.players.length!==2;
+  var h='<h3>نمط اللعب</h3>';
+  if(host){
+    h+='<div class="tools" style="display:flex;gap:6px;flex-wrap:wrap">'+[1,2,3,4,5,6].map(function(n){return '<button data-s="'+n+'" class="pl" style="flex:1 1 28%;justify-content:center;border:2px solid '+(V.size===n?'var(--gold)':'transparent')+';color:var(--tx)">'+n+' ضد '+n+'</button>';}).join('')+'</div>';
+    if(V.size>1)h+='<p class="legend">طريقة المواجهات:</p><div style="display:flex;gap:6px">'+
+      '<button data-f="pair" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='pair'?'var(--gold)':'transparent')+';color:var(--tx)">مواجهة واحدة لكل لاعب</button>'+
+      '<button data-f="league" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='league'?'var(--gold)':'transparent')+';color:var(--tx)">كل لاعب ضد كل لاعب</button></div>';
+  }else h+='<p style="text-align:center">'+V.size+' ضد '+V.size+(V.size>1?' — '+(V.format==='league'?'كل لاعب ضد كل لاعب':'مواجهة واحدة لكل لاعب'):'')+'</p>';
+  if(V.size>1)h+='<p class="legend">'+(V.format==='league'?'يواجه كل لاعب جميع لاعبي الفريق الآخر واحداً بعد الآخر ('+V.size+' دورات)، وكل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.':'يُقابَل اللاعب الأول بالأول والثاني بالثاني وهكذا. كل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.')+' المواجهات تجري في الوقت نفسه، ومجموع أزمنة الفريق الأقل يفوز.</p>';
+  $('#lmode').innerHTML=h;
+  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-s]'),function(b){b.onclick=function(){send({t:'mode',size:+b.dataset.s,format:V.format});};});
+  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-f]'),function(b){b.onclick=function(){send({t:'mode',size:V.size,format:b.dataset.f});};});
+  function list(t){return V.players.filter(function(p){return p.team===t;}).map(function(p,i){return '<div class="pl"><span>'+(i+1)+'. '+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('')||'<div class="pl" style="color:var(--mu)">—</div>';}
+  $('#lplayers').innerHTML='<div style="display:flex;gap:8px"><div style="flex:1"><b style="color:var(--red)">🔴 الأحمر</b>'+list(0)+'</div><div style="flex:1"><b style="color:var(--blue)">🔵 الأزرق</b>'+list(1)+'</div></div>';
+  $('#lteam').innerHTML='<div style="display:flex;gap:8px"><button class="btn red" id="jt0">انضم للأحمر</button><button class="btn" style="background:var(--blue);border-color:var(--blue)" id="jt1">انضم للأزرق</button></div>';
+  $('#jt0').onclick=function(){send({t:'team',team:0});};$('#jt1').onclick=function(){send({t:'team',team:1});};
+  $('#lmsg').textContent=V.lobbyMsg||'';
+  var b=$('#lstart');b.style.display=host?'block':'none';b.disabled=!!V.lobbyMsg;
   $('#lhint').textContent=host?'هاتفك يدير المباراة: أبقِ الصفحة مفتوحة والشاشة مضاءة.':'بانتظار المضيف لبدء المباراة...';
 }
 $('#lstart').onclick=function(){send({t:'start'});};
@@ -370,7 +433,7 @@ function buildRun(role){
   }
 }
 function doMove(d){var R=V.R,s=R.step;if(!s||!s.trapsSet||R.stun-since()>0||s.cands.indexOf(d)<0)return;send({t:'move',sid:s.id,d:d});}
-document.addEventListener('keydown',function(e){if(!V||V.phase!=='run'||V.R.mover!==myPid)return;var d={ArrowUp:'u',ArrowLeft:'l',ArrowRight:'r'}[e.key];if(d){e.preventDefault();doMove(d);}});
+document.addEventListener('keydown',function(e){if(dph()!=='run'||V.R.mover!==myPid)return;var d={ArrowUp:'u',ArrowLeft:'l',ArrowRight:'r'}[e.key];if(d){e.preventDefault();doMove(d);}});
 function buildQ(s){
   var q=s.q,b=$('#qbox');
   b.innerHTML='<span class="qcat">'+esc(q.cat)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>';
@@ -413,21 +476,24 @@ function buildRoundEnd(){
   var head=r.done?(iRan?'🏁 وصلت في '+r.time+' ث':'🏁 '+esc(nm(R.mover))+' وصل في '+r.time+' ث'):(iRan?'⏱ انتهى الوقت — بقي '+r.rowsLeft+' صفوف':'🪤 أوقفته! بقي له '+r.rowsLeft+' صفوف');
   $('#stage').innerHTML='<div class="card '+(iRan?'me':'enemy')+'"><h3>'+head+'</h3>'+
     '<p class="legend" style="text-align:center">الزمن المحتسب: <b>'+r.time+'</b> ث'+(r.done?'':' (90 + 5 لكل صف متبقٍّ)')+'<br>تحديات صحيحة '+sx.correct+' • خاطئة '+sx.wrong+' • مجازفات ناجحة '+sx.gambleWins+' من '+sx.gambles+' • فخاخ '+sx.traps+'</p>'+
-    '<p class="win" style="font-size:18px">🔁 الجولة القادمة: '+(iRan?'أنت تضع الفخاخ':'أنت تجري')+'</p></div>';
+    (V.round<V.total?'<p class="win" style="font-size:18px">🔁 الجولة القادمة: '+(iRan?'أنت تضع الفخاخ':'أنت تجري')+'</p>':'<p class="win" style="font-size:18px">✅ انتهت مواجهتك</p>')+'</div>';
 }
 function renderEnd(){
-  var ps=V.players.slice().sort(function(a,b){return a.tot-b.tot;});
-  var h='<p class="win">'+(V.winner?(V.winner===myPid?'🏆 فزت!':'🏆 '+esc(nm(V.winner))+' يفوز'):'🤝 تعادل')+'</p>';
-  h+='<table><tr><th>اللاعب</th><th>مجموع الزمن</th><th>الجولات</th></tr>'+ps.map(function(p){return '<tr><td>'+esc(p.name)+'</td><td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+'</td></tr>';}).join('')+'</table>';
-  h+='<p class="legend">'+V.history.map(function(x){return 'الجولة '+x.round+': '+esc(nm(x.mover))+(x.done?' وصل في ':' لم يصل — ')+x.time+' ث • مجازفات ناجحة '+x.stats.gambleWins+'/'+x.stats.gambles+' • فخاخ '+x.stats.traps;}).join('<br>')+'</p>';
+  var h,mt=teamOf(myPid);
+  if(V.size===1){var ps=V.players.slice().sort(function(a,b){return a.tot-b.tot;});var w=V.winTeam<0?null:(V.winTeam===0?V.A[0]:V.B[0]);
+    h='<p class="win">'+(w?(w===myPid?'🏆 فزت!':'🏆 '+esc(nm(w))+' يفوز'):'🤝 تعادل')+'</p>';}
+  else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' ث — الأزرق '+V.teamTot[1]+' ث</p>';
+  var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return a.tot-b.tot;});
+  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>مجموع الزمن</th><th>أزمنته</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+'</td></tr>';}).join('')+'</table>';
+  h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+esc(nm(x.mover))+' ضد فخاخ '+esc(nm(x.setter))+(x.done?' — وصل في ':' — لم يصل، احتُسب ')+x.time+' ث • مجازفات ناجحة '+x.stats.gambleWins+'/'+x.stats.gambles+' • فخاخ '+x.stats.traps;}).join('<br>')+'</p>';
   h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
   $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
 }
 function loop(){
-  if(V&&V.R&&(V.phase==='run'||V.phase==='ready')){
+  var ph=dph();if(V&&V.R&&(ph==='run'||ph==='ready')){
     var tl=$('#tl');if(tl){var s=Math.max(0,Math.ceil((V.R.left-since())/1000));if(tl.textContent!==String(s))tl.textContent=s;}
     var cd=$('#cd');if(cd){var c=Math.max(0,Math.ceil((V.R.toStart-since())/1000));cd.textContent=c>0?c:'انطلق!';}
-    if(V.phase==='run'){var role=V.R.mover===myPid?'m':'s';
+    if(ph==='run'){var role=V.R.mover===myPid?'m':'s';
       var stunNow=V.R.stun-since()>0;if(stunNow!==loop._st||role==='s'){loop._st=stunNow;updateRun(role);}}
   }
   requestAnimationFrame(loop);}
