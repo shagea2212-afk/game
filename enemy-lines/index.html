@@ -59,6 +59,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 #toast{position:fixed;bottom:18px;left:16px;right:16px;background:var(--red);padding:12px;border-radius:12px;text-align:center;display:none;z-index:10}
 .flash{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity .45s}
 .flash.on{opacity:.35;transition:none}
+canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch-action:none}
+.pow{height:14px;background:var(--cell);border-radius:8px;overflow:hidden;margin:6px 0}
+.pow i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold),var(--red))}
+.help{font-size:13px;color:var(--mu);line-height:1.6;text-align:center}
+.msg{color:var(--gold);text-align:center;min-height:20px;font-size:15px;margin:6px 0}
+.xbtns{display:flex;gap:8px}.xbtns .btn{font-size:19px;padding:16px 6px}
+.btn.blue{background:var(--blue);border-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -80,9 +87,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
     🏃 <b>العدّاء</b> يجري من الأسفل إلى خط النهاية 🏁 في الأعلى.<br>
     🧩 في كل خطوة يظهر له تحدٍّ سريع: سؤال أو رمز أو مطابقة أو نمط.<br>
     🪤 <b>في اللحظة نفسها</b> يرى خصمه لوحة الجري، فيضع فخّين في المربعات الثلاثة أمام العدّاء (يسار، وسط، يمين)، ويبقى مربع واحد آمن.<br>
-    ✅ إذا حلّ العدّاء التحدي يُضاء له الاتجاه الآمن بالأخضر.<br>
+    ✅ إذا حلّ العدّاء التحدي يُضاء له الاتجاه الآمن بالأخضر فيتقدم خطوة.<br>
     🎲 أو يجازف ويتحرك فوراً بالتخمين، وهذا أسرع إن أصاب.<br>
-    💥 الفخ يُسقطه مكانه ويشلّه ثانيتين ونصفاً، ثم تبدأ خطوة جديدة.<br>
+    💥 إذا وقع في فخ يتراجع خطوة إلى الخلف.<br>
+    ✖️ مجازفتان ناجحتان متتاليتان تفتحان <b>تحدي X</b>: كرتان على خطين متقاطعين، كلٌّ يطلق كرته في الوقت نفسه ويحاول التقاط كرة الآخر. موضع توقف كرة العدّاء يحدد عدد الصفوف التي يتقدمها.<br>
     🔁 تتبادلان الأدوار كل جولة، ومجموع الأزمنة الأقل يفوز.<br>
     👥 الفرق من 2 ضد 2 إلى 6 ضد 6: كل لاعب يواجه لاعباً من الفريق الآخر مواجهةً كاملة يلعبها بنفسه، والمواجهات تجري في الوقت نفسه. ومجموع أزمنة الفريق الأقل يفوز.
   </div>
@@ -107,7 +115,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 /*CORE-START*/
-var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=2500,READY_MS=3000,ROUNDEND_MS=6000;
+var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,X_SEC=3,READY_MS=3000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -137,6 +145,28 @@ function makeQ(used,id){
   else if(kind==='symbol'){var e=shuffle(EMO.slice()).slice(0,4);m=mcFrom(e);q.cat='مطابقة';q.text='اضغط على الرمز المطابق: '+e[0];q.o=m.o;q.ans=m.ans;q.emo=1;}
   else{var e2=shuffle(EMO.slice()).slice(0,2),opts=[e2[1],e2[0],e2[0],e2[0]];var o=shuffle(opts.slice());q.cat='رمز مختلف';q.text='أيّ رمز مختلف عن البقية؟';q.o=o;q.ans=o.indexOf(e2[1]);q.emo=1;}
   return q;
+}
+var A_DEC=0.6, CENTER=0.5, CATCH_R=0.07, COLL_MS=80, XWIN=4000, XEND=6300;
+function powerAt(ms){var x=(ms/700)%2;return 1-Math.abs(x-1);}
+function ballOf(t,p){var s=0.35+p*0.73,v0=Math.sqrt(2*A_DEC*s);return {t:t,p:p,s:s,v0:v0,tStop:v0/A_DEC};}
+function distAt(b,ms){var dt=(ms-b.t)/1000;if(dt<0)return 0;if(dt>b.tStop)dt=b.tStop;return b.v0*dt-A_DEC*dt*dt/2;}
+function timeAt(b,D){if(b.s<D)return Infinity;return b.t+1000*(b.v0-Math.sqrt(Math.max(0,b.v0*b.v0-2*A_DEC*D)))/A_DEC;}
+var ZONES=[{a:0.5,b:0.6,v:0,l:'محايدة (0)'},{a:0.6,b:0.72,v:1,l:'+1'},{a:0.72,b:0.84,v:2,l:'+2'},{a:0.84,b:0.94,v:3,l:'+3'},{a:0.94,b:1.0,v:4,l:'★ +4'},{a:1.0,b:1.2,v:-1,l:'خروج −1'}];
+function zoneOf(s){if(s<CENTER)return {v:0,l:'لم تعبر (0)'};for(var i=0;i<ZONES.length;i++)if(s>=ZONES[i].a&&s<ZONES[i].b)return ZONES[i];return ZONES[5];}
+// cE = time the EARNER tapped catch (on blue ball); cO = time OPPONENT tapped catch (on red ball)
+function resolveX(bE,bO,cE,cO){
+  var tE=timeAt(bE,CENTER),tO=timeAt(bO,CENTER);
+  var coll=isFinite(tE)&&isFinite(tO)&&Math.abs(tE-tO)<=COLL_MS;
+  var tColl=coll?Math.max(tE,tO):Infinity;
+  function near(b,t){return t!=null&&t>=b.t&&Math.abs(distAt(b,t)-CENTER)<=CATCH_R;}
+  var eCaught=near(bE,cO)&&cO<=tColl, oCaught=near(bO,cE)&&cE<=tColl;
+  var collided=coll&&!eCaught&&!oCaught;
+  var dE=0,dO=0,zone=null;
+  if(eCaught){dE-=1;dO+=1;}
+  if(oCaught){dE+=1;dO-=1;}
+  if(!eCaught){zone=collided?{v:0,l:'اصطدام (0)'}:zoneOf(bE.s);dE+=zone.v;}
+  return {dE:dE,dO:dO,eCaught:eCaught,oCaught:oCaught,collided:collided,zone:zone,
+    finalE:(eCaught||collided)?CENTER:bE.s, finalO:(oCaught||collided)?CENTER:bO.s};
 }
 function candidates(pos){var out=[];DORDER.forEach(function(d){var r=pos[0]+DIRS[d][0],c=pos[1]+DIRS[d][1];if(r>=0&&c>=0&&c<COLS)out.push(d);});return out;}
 function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair'};var self=this;this.iv=setInterval(function(){self.tick();},150);}
@@ -176,7 +206,12 @@ Server.prototype.handle=function(c,m){
   if(m.t==='start'){if(isHost&&S.phase==='lobby'&&!this.lobbyMsg())this.startMatch();return;}
   if(m.t==='again'){if(isHost&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});S.duels=null;this.push();}return;}
   if(S.phase!=='match')return;
-  var D=this.duelOf(me.id);if(!D||D.phase!=='run')return;var R=D.R,st=R.step;if(!st)return;
+  var D=this.duelOf(me.id);if(!D)return;
+  if(D.phase==='x'){var x=D.x;if(me.id!==x.earner&&me.id!==x.opp)return;
+    if(m.t==='xlaunch'){if(x.L[me.id]!=null||typeof m.at!=='number')return;x.L[me.id]=Math.max(0,Math.min(XWIN,m.at));this.push();}
+    else if(m.t==='xcatch'){if(x.C[me.id]!=null||typeof m.at!=='number'||m.at<0||m.at>XEND)return;x.C[me.id]=m.at;}
+    return;}
+  if(D.phase!=='run')return;var R=D.R,st=R.step;if(!st)return;
   if(m.t==='trap'){
     if(me.id!==R.setter||st.traps||m.sid!==st.id)return;
     var ds=m.dirs;if(!Array.isArray(ds))return;
@@ -195,16 +230,18 @@ Server.prototype.handle=function(c,m){
     var gamble=st.qRes!==true;if(gamble)R.stats.gambles++;
     var dd=DIRS[m.d],np=[R.pos[0]+dd[0],R.pos[1]+dd[1]];
     if(st.traps.indexOf(m.d)>=0){
-      R.stats.traps++;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};R.stunUntil=n+STUN_MS;
+      R.stats.traps++;R.streak=0;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};R.stunUntil=n+STUN_MS;
+      R.pos=[Math.min(ROWS-1,R.pos[0]+1),R.pos[1]];
       this.newStep(D,n+STUN_MS);return;
     }
-    R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble};if(gamble)R.stats.gambleWins++;
+    R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble};if(gamble){R.stats.gambleWins++;R.streak++;}else R.streak=0;
     if(np[0]===0){this.endRound(D,true);return;}
+    if(R.streak>=2){R.streak=0;this.startX(D);return;}
     this.newStep(D,n);return;
   }
 };
 Server.prototype.startMatch=function(){
-  var S=this.S;S.times={};S.players.forEach(function(p){S.times[p.id]=[];});S.history=[];
+  var S=this.S;S.times={};S.adj={};S.players.forEach(function(p){S.times[p.id]=[];S.adj[p.id]=0;});S.history=[];
   S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});
   S.rotation=0;S.rotations=(S.size>1&&S.format==='league')?S.size:1;S.extra=0;
   S.phase='match';this.startRotation();
@@ -216,7 +253,7 @@ Server.prototype.startRotation=function(){
 };
 Server.prototype.nextRound=function(D){
   D.round++;var mi=(D.round-1)%2,ps=[D.a,D.b];
-  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0},startAt:this.now()+READY_MS};
+  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,streak:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0,x:0},startAt:this.now()+READY_MS};
   D.R.endAt=D.R.startAt+RUN_MS;D.phase='ready';this.push();
 };
 Server.prototype.newStep=function(D,at){
@@ -225,6 +262,19 @@ Server.prototype.newStep=function(D,at){
   this.push();
 };
 Server.prototype.setTraps=function(D,ds){var R=D.R,st=R.step,n=this.now();st.traps=ds;var w=Math.max(0,n-st.startAt);R.waited+=w;R.endAt+=w;this.push();};
+Server.prototype.startX=function(D){
+  var n=this.now(),R=D.R;R.step=null;R.stats.x++;
+  D.x={id:++this.sid,earner:R.mover,opp:R.setter,start:n,L:{},C:{},res:null};D.xPause=n;
+  D.phase='x';D.until=n+XEND+700;this.push();
+};
+Server.prototype.finishX=function(D){
+  var S=this.S,x=D.x,R=D.R,lE=x.L[x.earner]!=null?x.L[x.earner]:XWIN,lO=x.L[x.opp]!=null?x.L[x.opp]:XWIN;
+  x.L[x.earner]=lE;x.L[x.opp]=lO;
+  var r=resolveX(ballOf(lE,powerAt(lE)),ballOf(lO,powerAt(lO)),x.C[x.earner],x.C[x.opp]);x.res=r;
+  R.pos=[Math.max(0,Math.min(ROWS-1,R.pos[0]-r.dE)),R.pos[1]];
+  S.adj[x.opp]=(S.adj[x.opp]||0)-r.dO*X_SEC;
+  D.phase='xres';D.until=this.now()+4500;this.push();
+};
 Server.prototype.endRound=function(D,done){
   var S=this.S,R=D.R,n=this.now();
   var t=done?(n-R.startAt-R.waited)/1000:RUN_MS/1000+R.pos[0]*5;
@@ -240,6 +290,10 @@ Server.prototype.tick=function(){
     else if(D.phase==='run'){
       if(n>=R.endAt){self.endRound(D,false);return;}
       var st=R.step;if(st&&!st.traps&&n>st.setDl){var c=shuffle(st.cands.slice());st.auto=true;self.setTraps(D,c.slice(0,c.length-1));}
+    }else if(D.phase==='x'&&n>D.until){self.finishX(D);}
+    else if(D.phase==='xres'&&n>D.until){var w=n-D.xPause;R.waited+=w;R.endAt+=w;D.x=null;
+      if(R.pos[0]===0){D.phase='run';self.endRound(D,true);return;}
+      D.phase='run';self.newStep(D,n);
     }else if(D.phase==='roundEnd'&&n>D.until){
       if(D.round<D.rounds)self.nextRound(D);
       else if(S.size===1&&self.total(D.a)===self.total(D.b)&&D.rounds<12){D.rounds+=2;self.nextRound(D);}
@@ -253,11 +307,11 @@ Server.prototype.tick=function(){
     S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a<b?0:1);this.push();
   }
 };
-Server.prototype.total=function(pid){return Math.round((this.S.times[pid]||[]).reduce(function(s,x){return s+x;},0)*10)/10;};
+Server.prototype.total=function(pid){var S=this.S;return Math.round(((S.times[pid]||[]).reduce(function(s,x){return s+x;},0)+((S.adj&&S.adj[pid])||0))*10)/10;};
 Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
   var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,
-    players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]||[]:[]};})};
+    players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,adj:S.adj?S.adj[p.id]||0:0,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]||[]:[]};})};
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
@@ -265,8 +319,9 @@ Server.prototype.view=function(pid){
     v.rest=S.restUntil?Math.max(0,S.restUntil-n):0;
     var D=this.duelOf(pid);
     if(D){var R=D.R;v.D={phase:D.phase,round:D.round,rounds:D.rounds,a:D.a,b:D.b};
+      if(D.x&&(D.phase==='x'||D.phase==='xres'))v.D.x={id:D.x.id,earner:D.x.earner,opp:D.x.opp,L:D.x.L,el:n-D.x.start,res:D.x.res};
       if(D.phase!=='done'){
-        v.D.R={mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
+        v.D.R={streak:R.streak,mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
         var st=R.step;
         if(st&&D.phase==='run'){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
           if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;}
@@ -287,7 +342,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp
 function lsGet(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function getPid(){var p=null;try{p=sessionStorage.getItem('bel_pid');}catch(e){}if(!p){p='p'+Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('bel_pid',p);}catch(e){}}return p;}
-var peer=null,conn=null,server=null,isHost=false,roomCode='',myPid=getPid(),myName='',V=null,stageKey='',stepKey='',lastEv=null,rcv=0,trapPick=[];
+var xLocal={id:0,t0:0},peer=null,conn=null,server=null,isHost=false,roomCode='',myPid=getPid(),myName='',V=null,stageKey='',stepKey='',lastEv=null,rcv=0,trapPick=[];
 var localConn={send:function(m){var c=JSON.parse(JSON.stringify(m));setTimeout(function(){onMsg(c);},0);}};
 function toast(s){var t=$('#toast');t.textContent=s;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},3000);}
 function ovl(s){var o=$('#ovl');if(s){o.innerHTML=s;o.classList.add('on');}else o.classList.remove('on');}
@@ -330,7 +385,7 @@ function scheduleRetry(){clearTimeout(retryT);retryT=setTimeout(function(){if(pe
 function onMsg(m){
   if(!m)return;if(m.t==='welcome'){myPid=m.pid;return;}
   if(m.t==='err'){ovl('');toast(m.msg);return;}
-  if(m.t!=='view')return;V=m.v;rcv=performance.now();if(V.D){V.R=V.D.R;V.round=V.D.round;V.total=V.D.rounds;}render();
+  if(m.t!=='view')return;V=m.v;rcv=performance.now();if(V.D){V.R=V.D.R;V.round=V.D.round;V.total=V.D.rounds;V.x=V.D.x;if(V.x&&V.x.id!==xLocal.id)xLocal={id:V.x.id,t0:performance.now()-(V.x.el||0),myL:null,caught:false};}render();
 }
 function since(){return performance.now()-rcv;}
 function dph(){return V&&V.phase==='match'&&V.D?V.D.phase:null;}
@@ -346,6 +401,7 @@ function render(){
     $('#hscore').innerHTML=me&&op?'زمنك <b>'+me.tot+'</b> ث — <b>'+op.tot+'</b> '+esc(op.name):'';}
   else{var mt=teamOf(myPid);$('#hscore').innerHTML='فريقك <b>'+V.teamTot[mt]+'</b> ث — <b>'+V.teamTot[1-mt]+'</b> ث';}
   if(!ph||ph==='done'){var kd='wait:'+V.rotation;if(stageKey!==kd){stageKey=kd;}buildWait();return;}
+  if(ph==='x'||ph==='xres'){var kx='x:'+V.x.id;if(stageKey!==kx){stageKey=kx;buildX($('#stage'));}return;}
   var R=V.R,role=R.mover===myPid?'m':'s',k=ph+':'+V.rotation+':'+V.round+':'+role;
   if(k!==stageKey){stageKey=k;stepKey='';lastEv=R.ev?R.ev.id:null;
     if(ph==='ready')buildReady(role);else if(ph==='run')buildRun(role);else buildRoundEnd();}
@@ -455,17 +511,17 @@ function updateRun(role){
     paint('rb',{pos:R.pos,cands:stun?null:s.cands,safe:s.safe,go:canGo,stun:stun});
     Array.prototype.forEach.call(document.querySelectorAll('#pad button'),function(b){var d=b.dataset.d;b.disabled=!canGo||s.cands.indexOf(d)<0;b.className=s.safe===d?'safe':'';});
     var t;
-    if(stun)t='💥 وقعت في فخ! انتظر حتى تستعيد توازنك...';
+    if(stun)t='💥 وقعت في فخ! تراجعت صفاً إلى الخلف...';
     else if(!s.trapsSet)t='🪤 العدو يضع الفخاخ الآن... حُلّ التحدي بسرعة';
     else if(s.qRes===true)t='✅ أصبت! الطريق الآمن: '+ARROW[s.safe]+' '+DNAME[s.safe];
     else if(s.qRes===false)t='❌ أخطأت — خمّن الاتجاه وجازف!';
-    else t='🎲 الفخاخ جاهزة — حُلّ التحدي أو جازف الآن';
+    else t='🎲 الفخاخ جاهزة — حُلّ التحدي أو جازف الآن'+(R.streak===1?' (مجازفة ناجحة واحدة: الثانية تفتح تحدي X ✖️)':'');
     if(st.textContent!==t)st.textContent=t;
   }else{
     var picks=s.trapsSet?null:trapPick;
     paint('rb',{pos:R.pos,cands:stun?null:s.cands,traps:s.traps,picks:picks,go:!s.trapsSet&&!stun,stun:stun});
     var t2;
-    if(stun)t2='💥 وقع في فخك! مشلول للحظات';
+    if(stun)t2='💥 وقع في فخك! تراجع صفاً';
     else if(!s.trapsSet)t2='🪤 ضع '+(s.cands.length-1)+' '+(s.cands.length-1===1?'فخاً':'فخّين')+' الآن! ('+Math.max(0,Math.ceil((s.setLeft-since())/1000))+' ث)';
     else t2={thinking:'🧠 يفكّر في: '+s.qCat,solved:'✅ حلّ التحدي — يعرف الطريق الآمن',failed:'❌ أخطأ — سيخمّن'}[s.qState]+(s.auto?' • (وُضعت تلقائياً)':'');
     if(st.textContent!==t2)st.textContent=t2;
@@ -478,13 +534,73 @@ function buildRoundEnd(){
     '<p class="legend" style="text-align:center">الزمن المحتسب: <b>'+r.time+'</b> ث'+(r.done?'':' (90 + 5 لكل صف متبقٍّ)')+'<br>تحديات صحيحة '+sx.correct+' • خاطئة '+sx.wrong+' • مجازفات ناجحة '+sx.gambleWins+' من '+sx.gambles+' • فخاخ '+sx.traps+'</p>'+
     (V.round<V.total?'<p class="win" style="font-size:18px">🔁 الجولة القادمة: '+(iRan?'أنت تضع الفخاخ':'أنت تجري')+'</p>':'<p class="win" style="font-size:18px">✅ انتهت مواجهتك</p>')+'</div>';
 }
+var XC=null;
+function buildX(el){
+  var x=V.x,role=myPid===x.earner?'e':myPid===x.opp?'o':'s';
+  var h='<div class="card '+(role==='e'?'me':'enemy')+'"><h3>✖️ تحدي X — مجازفتان ناجحتان!</h3><p style="text-align:center">🔴 '+esc(nm(x.earner))+' <small>(العدّاء)</small> ضد 🔵 '+esc(nm(x.opp))+' <small>(واضع الفخاخ)</small></p><canvas id="xc"></canvas>';
+  if(role!=='s')h+='<div id="xpw"><div class="pow"><i id="xpi"></i></div><div class="help" id="xpz"></div></div><div class="xbtns"><button class="btn red" id="xl">🚀 إطلاق</button><button class="btn blue" id="xk">✋ التقاط</button></div>';
+  h+='<div class="msg" id="xm"></div><p class="help">'+(role==='e'?'كرتك حمراء. قوة الإطلاق تحدد أين تتوقف، ورقم المنطقة = عدد الصفوف التي تتقدمها (حتى +4)، لكن القوة الزائدة تُخرجها فتتراجع صفاً. التقط الكرة الزرقاء وهي داخل الدائرة الصفراء: تتقدم صفاً ويُضاف لخصمك 3 ثوانٍ.':
+    role==='o'?'كرتك زرقاء. التقط الكرة الحمراء وهي داخل الدائرة الصفراء: يتراجع صفاً وتُلغى مكافأته، وتُخصم من زمنك 3 ثوانٍ. أو أطلق كرتك لتصل إلى المركز معها في اللحظة نفسها فتصطدمان وتُلغى مكافأته. واحذر أن يلتقط كرتك.':'تشاهد التحدي.')+'<br>لكل لاعب محاولة التقاط واحدة، والإطلاق تلقائي بقوة منخفضة إذا انتهت المهلة.</p>';
+  el.innerHTML=h;
+  var c=$('#xc'),W=Math.min(el.clientWidth-40,340),dpr=window.devicePixelRatio||1;
+  c.style.width=W+'px';c.style.height=W+'px';c.width=W*dpr;c.height=W*dpr;XC={c:c,ctx:c.getContext('2d'),W:W,dpr:dpr,role:role};
+  if(role!=='s'){
+    $('#xl').onclick=function(){var at=performance.now()-xLocal.t0;if(at>XWIN||xLocal.myL!=null)return;xLocal.myL=at;this.disabled=true;send({t:'xlaunch',at:at});};
+    $('#xk').onclick=function(){if(xLocal.caught)return;var at=performance.now()-xLocal.t0;xLocal.caught=true;xLocal.catchAt=at;this.disabled=true;this.textContent='✋ تمّت المحاولة';send({t:'xcatch',at:at});};
+  }
+}
+function launchOf(pid,tl){var L=V.x.L[pid];if(L!=null)return L;if(pid===myPid&&xLocal.myL!=null)return xLocal.myL;return tl>XWIN?XWIN:null;}
+function drawX(){
+  if(!XC||!V||!V.x||!document.body.contains(XC.c))return;
+  var x=V.x,ctx=XC.ctx,W=XC.W,tl=performance.now()-xLocal.t0,m=W*0.07,cx=W/2,cy=W/2;
+  ctx.setTransform(XC.dpr,0,0,XC.dpr,0,0);ctx.clearRect(0,0,W,W);
+  function mp(d,sx,sy,ex,ey){if(d<=CENTER){var f=d/CENTER;return [sx+(cx-sx)*f,sy+(cy-sy)*f];}var g=(d-CENTER)/0.6;return [cx+(ex-cx)*g,cy+(ey-cy)*g];}
+  var R=[m,W-m,W-m,m],B=[m,m,W-m,W-m];
+  function seg(P,a,b,col,w){var p=mp(a,P[0],P[1],P[2],P[3]),q=mp(b,P[0],P[1],P[2],P[3]);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.stroke();}
+  seg(B,0,1.1,'#2b4f7a',8);seg(R,0,0.5,'#6b2a35',8);
+  var zc=['#4a5075','#2f8f5b','#3ddc84','#ffc94d','#ff9f1c','#ff4d5e'];
+  ctx.font='bold '+Math.round(W*0.034)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ZONES.forEach(function(z,i){var b=Math.min(z.b,1.1);seg(R,z.a,b,zc[i],12);var p=mp((z.a+b)/2,R[0],R[1],R[2],R[3]);ctx.fillStyle='#fff';ctx.fillText(['0','+1','+2','+3','★4','−1'][i],p[0]+W*0.045,p[1]+W*0.045);});
+  var half=(W/2-m)*Math.SQRT2,cr=CATCH_R/0.55*half;
+  ctx.strokeStyle='#ffc94d';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  var res=x.res;
+  function ball(pid,P,col,fin){
+    var L=launchOf(pid,tl),d=0;
+    if(L!=null){var b=ballOf(L,powerAt(L));d=distAt(b,tl);if(fin!=null)d=Math.min(d,fin);}
+    var p=mp(d,P[0],P[1],P[2],P[3]),r=W*0.035;
+    if(L==null){r*=1+0.12*Math.sin(tl/120);}
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+  ball(x.opp,B,'#3da5ff',res?res.finalO:null);
+  ball(x.earner,R,'#ff4d5e',res?res.finalE:null);
+  var msg;
+  if(res){
+    var e=nm(x.earner),o=nm(x.opp),p=[];
+    if(res.eCaught)p.push('✋ '+o+' التقط الكرة الحمراء!');
+    if(res.oCaught)p.push('✋ '+e+' التقط الكرة الزرقاء!');
+    if(res.collided)p.push('💥 اصطدمت الكرتان في المركز');
+    else if(res.zone)p.push('🔴 توقفت الحمراء عند: '+res.zone.l);
+    msg=p.join('<br>')+'<br><b>🏃 '+esc(e)+': '+(res.dE?(res.dE>0?'يتقدم ':'يتراجع ')+Math.abs(res.dE)+' صف':'لا تغيير')+' • 🪤 '+esc(o)+': '+(res.dO?(res.dO>0?'−':'+')+Math.abs(res.dO*3)+' ث على زمنه':'لا تغيير')+'</b>';
+  }else if(tl<XWIN)msg='⏱ مهلة الإطلاق: '+Math.ceil((XWIN-tl)/1000)+' ث';
+  else msg='⏳ الكرتان في الطريق...';
+  var xm=$('#xm');if(xm&&xm._h!==msg){xm.innerHTML=msg;xm._h=msg;}
+  if(XC.role!=='s'){
+    var mine=launchOf(myPid,tl),pw=$('#xpw');
+    if(pw){
+      if(mine==null&&tl<XWIN){var pp=powerAt(tl);$('#xpi').style.width=(pp*100)+'%';
+        $('#xpz').textContent='القوة '+Math.round(pp*100)+'%'+(XC.role==='e'?' ← ستتوقف عند: '+zoneOf(0.35+pp*0.73).l:'');}
+      else{pw.style.opacity=0.35;var xl=$('#xl');if(xl)xl.disabled=true;}
+      if(res){var xk=$('#xk');if(xk)xk.disabled=true;}
+    }
+  }
+}
 function renderEnd(){
   var h,mt=teamOf(myPid);
   if(V.size===1){var ps=V.players.slice().sort(function(a,b){return a.tot-b.tot;});var w=V.winTeam<0?null:(V.winTeam===0?V.A[0]:V.B[0]);
     h='<p class="win">'+(w?(w===myPid?'🏆 فزت!':'🏆 '+esc(nm(w))+' يفوز'):'🤝 تعادل')+'</p>';}
   else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' ث — الأزرق '+V.teamTot[1]+' ث</p>';
   var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return a.tot-b.tot;});
-  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>مجموع الزمن</th><th>أزمنته</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+'</td></tr>';}).join('')+'</table>';
+  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>مجموع الزمن</th><th>أزمنته</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+(p.adj?' • ✖️ '+(p.adj>0?'+':'−')+Math.abs(p.adj)+' ث':'')+'</td></tr>';}).join('')+'</table>';
   h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+esc(nm(x.mover))+' ضد فخاخ '+esc(nm(x.setter))+(x.done?' — وصل في ':' — لم يصل، احتُسب ')+x.time+' ث • مجازفات ناجحة '+x.stats.gambleWins+'/'+x.stats.gambles+' • فخاخ '+x.stats.traps;}).join('<br>')+'</p>';
   h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
   $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
@@ -496,6 +612,7 @@ function loop(){
     if(ph==='run'){var role=V.R.mover===myPid?'m':'s';
       var stunNow=V.R.stun-since()>0;if(stunNow!==loop._st||role==='s'){loop._st=stunNow;updateRun(role);}}
   }
+  if(ph==='x'||ph==='xres')drawX();
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.addEventListener('beforeunload',function(e){if(isHost&&V&&V.phase!=='lobby'&&V.phase!=='end'){e.preventDefault();e.returnValue='';}});
