@@ -597,7 +597,7 @@ Server.prototype.lobbyMsg=function(){
   if(a>=1&&b>=1)return '';
   return 'يلزم لاعب واحد على الأقل في كل فريق (الأحمر '+a+' — الأزرق '+b+')';
 };
-Server.prototype.duelOf=function(pid){var ds=this.S.duels||[];for(var i=0;i<ds.length;i++)if(ds[i].a===pid||ds[i].b===pid)return ds[i];return null;};
+Server.prototype.duelOf=function(pid){var ds=this.S.duels||[];for(var i=0;i<ds.length;i++)if(ds[i].a===pid||ds[i].b===pid||(ds[i].members&&ds[i].members.indexOf(pid)>=0))return ds[i];return null;};
 Server.prototype.handle=function(c,m){
   if(!m||typeof m!=='object')return;
   var S=this.S,e=this.entry(c),n=this.now();if(!e)return;
@@ -636,6 +636,13 @@ Server.prototype.handle=function(c,m){
     D.offer={id:++this.sid,q:st.q,from:R.mover,to:R.setter,state:'pending',until:n+OFFER_MS,locked:{}};
     st.passed=true;R.passes++;R.stats.passes=(R.stats.passes||0)+1;st.q=makeQ(this.used,++this.qid);this.push();return;
   }
+  if(m.t==='trap'&&st.setters.length>1){
+    if(st.setters.indexOf(me.id)<0||st.traps||m.sid!==st.id||st.picks[me.id]||!Array.isArray(m.dirs)||m.dirs.length!==1)return;
+    var d1=m.dirs[0],got=[];for(var pp in st.picks)got.push(st.picks[pp]);
+    if(st.cands.indexOf(d1)<0||got.indexOf(d1)>=0)return;
+    st.picks[me.id]=d1;st.owner[d1]=me.id;got.push(d1);
+    if(got.length>=Math.max(0,st.cands.length-1))this.setTraps(D,got);else this.push();return;
+  }
   if(m.t==='trap'){
     if(me.id!==R.setter||st.traps||m.sid!==st.id)return;
     var ds=m.dirs;if(!Array.isArray(ds))return;
@@ -655,7 +662,7 @@ Server.prototype.handle=function(c,m){
     var dd=DIRS[m.d],np=[R.pos[0]+dd[0],R.pos[1]+dd[1]];
     if(st.traps.indexOf(m.d)>=0){
       R.stats.traps++;R.streak=0;R.ev={t:'trap',id:++this.sid,at:np,d:m.d,pts:-PT_TRAP};R.stunUntil=n+STUN_MS;
-      this.addPts(D,R.mover,-PT_TRAP);this.addPts(D,R.setter,PT_TRAP);
+      this.addPts(D,R.mover,-PT_TRAP);this.addPts(D,st.owner[m.d]||R.setter,PT_TRAP);
       R.pos=[Math.min(ROWS-1,R.pos[0]+1),R.pos[1]];
       this.newStep(D,n+STUN_MS);return;
     }
@@ -669,6 +676,9 @@ Server.prototype.handle=function(c,m){
 Server.prototype.startMatch=function(){
   var S=this.S;S.pts={};S.players.forEach(function(p){S.pts[p.id]=0;});S.history=[];
   S.ffa=S.mode==='ffa';S.snatch={};
+  if(S.ffa&&S.players.length>=3){var ids0=S.players.map(function(p){return p.id;});S.all=ids0;S.A=ids0;S.B=[];S.size=ids0.length;S.team=true;S.arena=true;
+    S.plan=[[ids0.slice(0,2)]];S.rotation=0;S.rotations=1;S.extra=0;S.phase='match';this.startRotation();return;}
+  S.arena=false;
   if(S.ffa){var ids=S.players.map(function(p){return p.id;}),nn=ids.length;S.all=ids;S.A=ids;S.B=[];S.size=nn===2?1:nn;S.team=nn>2;S.plan=[];
     var c=ids.slice();if(c.length%2)c.push(null);var m2=c.length;
     for(var r=0;r<m2-1;r++){var rot=[];for(var q=0;q<m2/2;q++){var x=c[q],y=c[m2-1-q];if(x&&y)rot.push(r%2?[y,x]:[x,y]);}S.plan.push(rot);c.splice(1,0,c.pop());}
@@ -686,16 +696,20 @@ Server.prototype.startMatch=function(){
 };
 Server.prototype.startRotation=function(){
   var S=this.S,k=S.rotation,self=this;S.duels=[];S.restUntil=0;
-  S.plan[k].forEach(function(p,i){S.duels.push({id:k*10+i,a:p[0],b:p[1],round:0,rounds:S.size===1?4:2,phase:'ready'});});
+  if(S.arena){var mem=S.all.slice();S.duels.push({id:k*10,a:mem[0],b:mem[1],members:mem,order:shuffle(mem.slice()),round:0,rounds:mem.length*(mem.length<=4?2:1),phase:'ready'});}
+  else S.plan[k].forEach(function(p,i){S.duels.push({id:k*10+i,a:p[0],b:p[1],round:0,rounds:S.size===1?4:2,phase:'ready'});});
   S.duels.forEach(function(D){self.nextRound(D);});this.push();
 };
 Server.prototype.nextRound=function(D){
-  D.round++;var mi=(D.round-1)%2,ps=[D.a,D.b];
-  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,streak:0,best:START[0],rp:{},passes:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0,x:0},startAt:this.now()+READY_MS};
+  D.round++;var mi=(D.round-1)%2,ps=[D.a,D.b],others=null;
+  if(D.members){var mv=D.order[(D.round-1)%D.order.length];others=D.members.filter(function(p){return p!==mv;});ps=[mv,others[(D.round-1)%others.length]];mi=0;}
+  D.R={others:others,stepNo:0,mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,streak:0,best:START[0],rp:{},passes:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0,x:0},startAt:this.now()+READY_MS};
   D.R.endAt=D.R.startAt+RUN_MS;D.offer=null;D.phase='ready';this.push();
 };
 Server.prototype.newStep=function(D,at){
   var R=D.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos),q:makeQ(this.used,++this.qid),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
+  var stp=R.step;stp.picks={};stp.owner={};
+  if(R.others){var o=R.others,m=o.length,i0=(R.stepNo++)*2;stp.setters=m<=2?o.slice():[o[i0%m],o[(i0+1)%m]];}else stp.setters=[R.setter];
   if(R.step.cands.length<=1)R.step.traps=[];
   this.push();
 };
@@ -744,12 +758,12 @@ Server.prototype.resolveOffer=function(D,how,pid){
   O.state='done';O.doneAt=this.now();this.push();
 };
 Server.prototype.addPts=function(D,pid,v){if(!v)return;var S=this.S;S.pts[pid]=(S.pts[pid]||0)+v;
-  if(pid===D.R.mover||pid===D.R.setter)D.R.rp[pid]=(D.R.rp[pid]||0)+v;else S.snatch[pid]=(S.snatch[pid]||0)+v;};
+  if(pid===D.R.mover||pid===D.R.setter||(D.R.others&&D.R.others.indexOf(pid)>=0))D.R.rp[pid]=(D.R.rp[pid]||0)+v;else S.snatch[pid]=(S.snatch[pid]||0)+v;};
 Server.prototype.endRound=function(D,done){
   var S=this.S,R=D.R,n=this.now();
   if(D.offer&&(D.offer.state==='pending'||D.offer.state==='bounced'))this.resolveOffer(D,'timeout');
   var mp=R.rp[R.mover]||0,sp=R.rp[R.setter]||0;
-  R.result={done:done,mp:mp,sp:sp,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,done:done,mp:mp,sp:sp,stats:R.stats});
+  R.result={done:done,mp:mp,sp:sp,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,others:R.others,rp:JSON.parse(JSON.stringify(R.rp)),done:done,mp:mp,sp:sp,stats:R.stats});
   R.step=null;D.phase='roundEnd';D.until=n+ROUNDEND_MS;this.push();
 };
 Server.prototype.sum=function(ids){var self=this;return ids.reduce(function(s,id){return s+self.total(id);},0);};
@@ -761,7 +775,8 @@ Server.prototype.tick=function(){
     if(D.phase==='ready'&&n>=R.startAt){D.phase='run';self.newStep(D,n);}
     else if(D.phase==='run'){
       if(n>=R.endAt){self.endRound(D,false);return;}
-      var st=R.step;if(st&&!st.traps&&n>st.setDl){var c=shuffle(st.cands.slice());st.auto=true;self.setTraps(D,c.slice(0,c.length-1));}
+      var st=R.step;if(st&&!st.traps&&n>st.setDl){var got=[],pk;for(pk in st.picks)got.push(st.picks[pk]);var free=shuffle(st.cands.filter(function(x){return got.indexOf(x)<0;}));
+        var lazy=st.setters.filter(function(p){return !st.picks[p];});while(got.length<st.cands.length-1&&free.length){var fd=free.shift();got.push(fd);if(lazy.length)st.owner[fd]=lazy.shift();}st.auto=true;self.setTraps(D,got);}
     }else if(D.phase==='xintro'&&n>=D.until){D.phase='x';D.x.start=n;D.until=n+XEND+700;self.push();}
     else if(D.phase==='x'&&n>D.until){self.finishX(D);}
     else if(D.phase==='xres'&&n>D.until){var w=n-D.xPause;R.waited+=w;R.endAt+=w;D.x=null;
@@ -793,7 +808,7 @@ Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
   var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,snatchPts:S.snatch||{},
     players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:self.total(p.id)};})};
-  v.mode=S.mode;v.ffa=!!S.ffa;
+  v.mode=S.mode;v.ffa=!!S.ffa;v.arena=!!S.arena;
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
@@ -809,7 +824,8 @@ Server.prototype.view=function(pid){
         var st=R.step;
         if(st&&D.phase==='run'){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
           s.qid=st.q.id;s.passed=!!st.passed;s.passesLeft=MAX_PASS-R.passes;
-          if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;s.q={cat:st.q.cat,text:st.q.text,o:st.q.o};if(st.qRes!=null)s.q.ans=st.q.ans;}
+          s.setters=st.setters;if(pid!==R.mover){s.picks=st.picks;s.mySet=st.setters.indexOf(pid)>=0&&!st.picks[pid]&&!st.traps;}
+          if(pid===R.setter||(R.others&&R.others.indexOf(pid)>=0)){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;s.q={cat:st.q.cat,text:st.q.text,o:st.q.o};if(st.qRes!=null)s.q.ans=st.q.ans;}
           if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo};if(st.qRes!=null)s.q.ans=st.q.ans;
             if(st.qRes===true&&st.traps)s.safe=st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0];}
           v.D.R.step=s;}
@@ -909,7 +925,7 @@ function renderLobby(){
   var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a,h='';
   function tg(k,l){return '<button data-m="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.mode===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
   if(host)h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+tg('team','👥 فرق')+tg('ffa','🧍 كلٌّ لنفسه')+'</div>';
-  if(ffa){h+='<h3>🧍 كلٌّ لنفسه — '+V.players.length+' لاعبين</h3><p class="legend">• كل لاعب يواجه كل لاعب آخر مرة: يجري مرة ويضع الفخاخ مرة.<br>• المواجهات تجري معاً، ومن ليس في مواجهة الآن يستطيع خطف الأسئلة المرمية ⚡.<br>• صاحب أعلى نقاط يفوز، ويظهر الترتيب 🥇🥈🥉 طوال المباراة.</p>';}
+  if(ffa){h+='<h3>🧍 كلٌّ لنفسه — '+V.players.length+' لاعبين</h3><p class="legend">• الجميع في ساحة واحدة: لاعب يجري، والبقية <b>كلهم ضده</b> ينصبون الفخاخ معاً — كل لاعب فخ واحد في كل خطوة، ومن يقع العدّاء في فخّه يأخذ <b>+1</b>.<br>• يتناوب الجميع على الجري، ولا أحد ينتظر بلا عمل.<br>• إذا رمى العدّاء سؤاله يخطفه الأسرع ⚡.<br>• صاحب أعلى نقاط يفوز، ويظهر الترتيب 🥇🥈🥉 طوال المباراة.</p>';}
   else{h+='<h3>المواجهة: <span style="color:var(--red)">'+a+'</span> ضد <span style="color:var(--blue)">'+b+'</span></h3>';
   if(a+b>2){
     if(host)h+='<div style="display:flex;gap:6px">'+
@@ -956,8 +972,9 @@ function buildReady(role){
   var R=V.R;
   var steps=role==='m'?
    '<b>1.</b> سيظهر لك سؤال 🧠 وأمامك 3 مربعات.<br><b>2.</b> أجب صح ← يُضاء المربع الآمن بالأخضر ✅ ← اضغطه = <b>+2</b>.<br><b>3.</b> أو خمّن واضغط مربعاً 🎲: صح = <b>+1</b>، فخ = <b>−1</b> وتتراجع خطوة 💥.<br><b>4.</b> 3 تخمينات صحيحة متتالية = <b>عجلة الحظ 🎡</b>. والوصول 🏁 = <b>+5</b>.'
+  :V.arena?'<b>1.</b> '+esc(nm(V.R.mover))+' يجري الآن، وأنتم جميعاً ضده 🏃.<br><b>2.</b> في كل خطوة يضع لاعبان منكم <b>فخاً واحداً لكلٍّ منهما</b> 👆 — لا تكرر مربع زميلك.<br><b>3.</b> كل مرة يقع في فخّك = <b>+1</b> لك.<br><b>4.</b> وإن رمى سؤاله فاخطفه ⚡.'
   :'<b>1.</b> ستُضاء لك 3 مربعات أمام خصمك 🏃.<br><b>2.</b> اضغط على <b>مربعين</b> 👆👆 = فخّان 🪤.<br><b>3.</b> المربع الثالث يبقى آمناً — اختر بذكاء أين تتركه!<br><b>4.</b> كل مرة يقع فيها خصمك في فخك = <b>+1</b> لك. لديك 5 ثوانٍ كل مرة.';
-  $('#stage').innerHTML='<div class="card '+(role==='m'?'me':'enemy')+'"><h3 style="font-size:21px">'+(role==='m'?'🏃 دورك: الجري':'🪤 دورك: وضع الفخاخ')+'</h3>'+
+  $('#stage').innerHTML='<div class="card '+(role==='m'?'me':'enemy')+'"><h3 style="font-size:21px">'+(role==='m'?'🏃 دورك: الجري':(V.arena?'🪤 دوركم: نصب الفخاخ لـ'+esc(nm(V.R.mover)):'🪤 دورك: وضع الفخاخ'))+'</h3>'+
   '<div class="legend" style="font-size:16px;line-height:2;color:var(--tx)">'+steps+'</div>'+
   '<div class="win" id="cd">7</div>'+boardHtml('rb')+'</div>';
   paint('rb',{pos:R.pos});
@@ -972,7 +989,7 @@ function buildRun(role){
   }else{
     h='<div class="card enemy"><div class="bar"><span>🪤 لوحة الفخاخ</span><span>⏱ <span class="t" id="tl">--</span></span></div>'+
       '<div id="offer"></div><div class="q" id="sq"></div><div class="status" id="st"></div>'+boardHtml('rb')+
-      '<p class="legend" style="text-align:center">اضغط على المربعات الثلاثة أمام العدّاء لوضع الفخاخ — اترك مربعاً واحداً آمناً.</p></div>';
+      '<p class="legend" style="text-align:center">'+(V.arena?'كل لاعب يضع فخاً واحداً في المربعات أمام العدّاء — ويبقى مربع آمن.':'اضغط على المربعات الثلاثة أمام العدّاء لوضع الفخاخ — اترك مربعاً واحداً آمناً.')+'</p></div>';
   }
   $('#stage').innerHTML=h;
   if(role==='m'){
@@ -982,6 +999,7 @@ function buildRun(role){
   }else{
     Array.prototype.forEach.call(document.querySelectorAll('#rb .c'),function(el){el.onclick=function(){
       var s=V.R.step;if(!s||s.trapsSet)return;var d=dirOf(s.pos,+el.dataset.r,+el.dataset.c);if(!d||s.cands.indexOf(d)<0)return;
+      if(s.setters&&s.setters.length>1){if(!s.mySet)return;for(var pk in s.picks)if(s.picks[pk]===d)return;send({t:'trap',sid:s.id,dirs:[d]});return;}
       var i=trapPick.indexOf(d);if(i>=0)trapPick.splice(i,1);else trapPick.push(d);
       var need=s.cands.length-1;if(trapPick.length>need)trapPick.shift();
       if(trapPick.length===need){send({t:'trap',sid:s.id,dirs:trapPick.slice()});}
@@ -1092,10 +1110,14 @@ function updateRun(role){
     if(st.textContent!==t)st.textContent=t;
   }else{
     if(s.q&&s.q.ans!=null){Array.prototype.forEach.call(document.querySelectorAll('#sq .opts button'),function(x,i){x.className=i===s.q.ans?'ok':'';});}
-    var picks=s.trapsSet?null:trapPick;
-    paint('rb',{pos:R.pos,cands:stun?null:s.cands,traps:s.traps,picks:picks,go:!s.trapsSet&&!stun,hint:!s.trapsSet&&!stun,stun:stun});
+    var multi=s.setters&&s.setters.length>1,pv=[];if(multi&&s.picks)for(var pk in s.picks)pv.push(s.picks[pk]);
+    var picks=s.trapsSet?null:(multi?pv:trapPick);
+    var canSet=multi?!!s.mySet:true;paint('rb',{pos:R.pos,cands:stun?null:s.cands,traps:s.traps,picks:picks,go:!s.trapsSet&&!stun&&canSet,hint:!s.trapsSet&&!stun&&canSet,stun:stun});
     var t2;
     if(stun)t2='💥 وقع في فخك! تراجع صفاً';
+    else if(!s.trapsSet&&multi){var oth=s.setters.filter(function(p){return p!==myPid;}).map(function(p){return nm(p);});
+      t2=s.mySet?'👆 اضغط مربعاً واحداً لتضع فخّك — '+(s.setters.indexOf(myPid)>=0?oth.join(' و')+' يضع الآخر':'')+' ('+Math.max(0,Math.ceil((s.setLeft-since())/1000))+' ث)'
+        :(s.setters.indexOf(myPid)>=0?'✅ وضعتَ فخّك — بانتظار '+oth.join(' و'):'👀 '+s.setters.map(function(p){return nm(p);}).join(' و')+' يضعان الفخاخ في هذه الخطوة');}
     else if(!s.trapsSet)t2='👆 اضغط على '+(s.cands.length-1===1?'مربع واحد':'مربعين')+' من المضيئة لتضع '+(s.cands.length-1===1?'فخاً':'فخّين')+' ('+Math.max(0,Math.ceil((s.setLeft-since())/1000))+' ث)';
     else t2={thinking:'🧠 يفكّر في: '+s.qCat,solved:'✅ حلّ التحدي — يعرف الطريق الآمن',failed:'❌ أخطأ — سيخمّن'}[s.qState]+(s.auto?' • (وُضعت تلقائياً)':'');
     if(st.textContent!==t2)st.textContent=t2;
@@ -1188,7 +1210,8 @@ function renderEnd(){
   else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
   var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return b.tot-a.tot;});
   h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>النقاط</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td><b>'+p.tot+'</b>'+((V.snatchPts||{})[p.id]?' <small>(⚡ خطف '+(V.snatchPts[p.id]>0?'+':'')+V.snatchPts[p.id]+')</small>':'')+'</td></tr>';}).join('')+'</table>';
-  h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+'🏃 '+esc(nm(x.mover))+' <bdi>+'+x.mp+'</bdi>'+(x.done?' (وصل 🏁)':' (لم يصل)')+' • 🪤 '+esc(nm(x.setter))+' <bdi>+'+x.sp+'</bdi>';}).join('<br>')+'</p>';
+  if(V.arena)h+='<p class="legend">'+V.history.map(function(x){var o=(x.others||[]).filter(function(p){return x.rp&&x.rp[p];}).map(function(p){return esc(nm(p))+' <bdi>+'+x.rp[p]+'</bdi>';}).join('، ');return '🏃 '+esc(nm(x.mover))+' <bdi>'+(x.mp>=0?'+':'')+x.mp+'</bdi>'+(x.done?' 🏁':'')+(o?' • 🪤 '+o:'');}).join('<br>')+'</p>';
+  else h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+'🏃 '+esc(nm(x.mover))+' <bdi>+'+x.mp+'</bdi>'+(x.done?' (وصل 🏁)':' (لم يصل)')+' • 🪤 '+esc(nm(x.setter))+' <bdi>+'+x.sp+'</bdi>';}).join('<br>')+'</p>';
   h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
   $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
 }
