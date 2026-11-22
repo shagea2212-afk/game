@@ -66,6 +66,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .passb:disabled{opacity:.35}
 .opts.sm button{padding:8px 4px;font-size:14px}
 .offer{background:#2b2410;border:2px solid var(--gold);border-radius:14px;padding:9px;margin:6px 0;text-align:center}
+.offer.hot{background:#3a1820;border-color:var(--red)}
 .offer.done{background:#1d1e24;border-color:var(--ln);font-size:14px;padding:7px}
 .offer .opts{margin-top:6px}
 #pop{direction:ltr;position:fixed;top:38%;left:0;right:0;text-align:center;font-size:54px;font-weight:900;pointer-events:none;z-index:9;opacity:0;text-shadow:0 3px 12px #000}
@@ -101,12 +102,13 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     • أجب صح ← يظهر لك المربع الآمن بالأخضر ← اضغطه وتقدّم خطوة.<br>
     • أو خمّن واضغط مربعاً مباشرة. فإن وقعت في فخ 💥 تتراجع خطوة.<br>
     • 3 تخمينات صحيحة متتالية ← تظهر لك <b>عجلة الحظ 🎡</b> وفيها مكافأة حتى 4 خطوات.<br>
-    • 🔁 <b>مقايضة:</b> لا تعرف الجواب؟ أعطِ السؤال لخصمك وخذ سؤالاً غيره (3 مرات في الجولة). إن أجاب خصمك صح أخذ <b>+1</b>، وإن أخطأ فلا شيء عليه.<br><br>
+    • 🔁 <b>رهان السؤال:</b> ترى أن السؤال صعب؟ راهِن خصمك به وخذ سؤالاً غيره (3 مرات في الجولة). إن أجاب خصمك صح: <b>+2</b> له و<b>−1</b> عليك. وإن أخطأ: <b>+1</b> لك.<br>
+    • 🔄 لكن خصمك يستطيع <b>قلب الرهان</b> عليك: فتجيب أنت عن السؤال نفسه — صح <b>+2</b> لك، خطأ <b>−2</b> عليك. فلا تهرب من سؤال إلا إن كنت واثقاً أنه صعب على خصمك!<br><br>
     <b style="color:var(--red)">🪤 إذا كان دورك وضع الفخاخ:</b><br>
     • تُضاء لك 3 مربعات أمام خصمك.<br>
     • اضغط على مربعين منها 👆👆 فيصبحان فخّين، والثالث يبقى آمناً.<br>
     • كرر ذلك في كل خطوة يخطوها خصمك.<br>
-    • 👀 ترى سؤال خصمك على شاشتك أيضاً. وإن أعطاك سؤاله بالمقايضة: أجب صح = <b>+1</b> لك، أو ارفض.<br><br>
+    • 👀 ترى سؤال خصمك على شاشتك أيضاً. وإن راهنك بسؤاله: أجب صح = <b>+2</b> لك، أو اقلب الرهان عليه إن ظننت أنه هارب.<br><br>
     <b style="color:var(--gold)">⭐ النقاط:</b><br>
     • إجابة صحيحة وتقدّم = <b>+2</b> &nbsp;• تخمين صحيح = <b>+1</b><br>
     • الوصول إلى خط النهاية 🏁 = <b>+5</b><br>
@@ -135,7 +137,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 /*CORE-START*/
-var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,PT_STEAL=1,MAX_PASS=3,OFFER_MS=12000,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
+var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,MAX_PASS=3,OFFER_MS=12000,BOUNCE_MS=10000,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -561,15 +563,14 @@ Server.prototype.handle=function(c,m){
     else if(m.t==='xcatch'){if(x.C[me.id]!=null||typeof m.at!=='number'||m.at<0||m.at>XEND)return;x.C[me.id]=m.at;}
     return;}
   var O=D.offer;
-  if(m.t==='oans'||m.t==='odecline'){
-    if(!O||O.state!=='pending'||me.id!==O.to||m.oid!==O.id)return;
-    if(m.t==='odecline'){O.state='declined';}
-    else{if(typeof m.a!=='number')return;O.res=(m.a===O.q.ans);O.state='answered';if(O.res)this.addPts(D,O.to,PT_STEAL);}
-    O.doneAt=n;this.push();return;
+  if(m.t==='oans'||m.t==='obounce'){
+    if(!O||(O.state!=='pending'&&O.state!=='bounced')||me.id!==O.to||m.oid!==O.id)return;
+    if(m.t==='obounce'){if(O.state!=='pending')return;O.state='bounced';O.to=O.from;O.until=n+BOUNCE_MS;this.push();return;}
+    if(typeof m.a!=='number')return;this.resolveOffer(D,m.a===O.q.ans?'right':'wrong');return;
   }
   if(D.phase!=='run')return;var R=D.R,st=R.step;if(!st)return;
   if(m.t==='pass'){
-    if(me.id!==R.mover||st.qRes!=null||st.passed||R.passes>=MAX_PASS||m.sid!==st.id||(O&&O.state==='pending'))return;
+    if(me.id!==R.mover||st.qRes!=null||st.passed||R.passes>=MAX_PASS||m.sid!==st.id||(O&&O.state!=='done'))return;
     D.offer={id:++this.sid,q:st.q,from:R.mover,to:R.setter,state:'pending',until:n+OFFER_MS};
     st.passed=true;R.passes++;R.stats.passes=(R.stats.passes||0)+1;st.q=makeQ(this.used,++this.qid);this.push();return;
   }
@@ -638,10 +639,23 @@ Server.prototype.finishX=function(D){
   this.addPts(D,x.earner,r.dE);this.addPts(D,x.opp,r.dO);
   D.phase='xres';D.until=this.now()+4500;this.push();
 };
+// Trade = a bet. pending (opponent holds): right -> opp +2, runner -1 | wrong/timeout -> runner +1
+// bounced (runner holds, opponent flipped the bet): right -> runner +2 | wrong/timeout -> runner -2, opp +1
+Server.prototype.resolveOffer=function(D,how){
+  var O=D.offer,run=O.from,opp=O.from===D.R.mover?D.R.setter:D.R.mover;if(!O)return;
+  if(O.state==='pending'){
+    if(how==='right'){this.addPts(D,opp,2);this.addPts(D,run,-1);O.out='opp_right';}
+    else{this.addPts(D,run,1);O.out=how==='timeout'?'opp_timeout':'opp_wrong';}
+  }else if(O.state==='bounced'){
+    if(how==='right'){this.addPts(D,run,2);O.out='run_right';}
+    else{this.addPts(D,run,-2);this.addPts(D,opp,1);O.out=how==='timeout'?'run_timeout':'run_wrong';}
+  }else return;
+  O.state='done';O.doneAt=this.now();this.push();
+};
 Server.prototype.addPts=function(D,pid,v){if(!v)return;this.S.pts[pid]=(this.S.pts[pid]||0)+v;D.R.rp[pid]=(D.R.rp[pid]||0)+v;};
 Server.prototype.endRound=function(D,done){
   var S=this.S,R=D.R,n=this.now();
-  if(D.offer&&D.offer.state==='pending'){D.offer.state='expired';D.offer.doneAt=n;}
+  if(D.offer&&(D.offer.state==='pending'||D.offer.state==='bounced'))this.resolveOffer(D,'timeout');
   var mp=R.rp[R.mover]||0,sp=R.rp[R.setter]||0;
   R.result={done:done,mp:mp,sp:sp,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,done:done,mp:mp,sp:sp,stats:R.stats});
   R.step=null;D.phase='roundEnd';D.until=n+ROUNDEND_MS;this.push();
@@ -650,8 +664,8 @@ Server.prototype.sum=function(ids){var self=this;return ids.reduce(function(s,id
 Server.prototype.tick=function(){
   var S=this.S,n=this.now(),self=this;if(S.phase!=='match')return;
   S.duels.forEach(function(D){var R=D.R;
-    if(D.offer&&D.offer.state==='pending'&&n>D.offer.until){D.offer.state='expired';D.offer.doneAt=n;self.push();}
-    if(D.offer&&D.offer.state!=='pending'&&n>D.offer.doneAt+3500){D.offer=null;self.push();}
+    if(D.offer&&(D.offer.state==='pending'||D.offer.state==='bounced')&&n>D.offer.until)self.resolveOffer(D,'timeout');
+    if(D.offer&&D.offer.state==='done'&&n>D.offer.doneAt+4000){D.offer=null;self.push();}
     if(D.phase==='ready'&&n>=R.startAt){D.phase='run';self.newStep(D,n);}
     else if(D.phase==='run'){
       if(n>=R.endAt){self.endRound(D,false);return;}
@@ -687,8 +701,8 @@ Server.prototype.view=function(pid){
     var D=this.duelOf(pid);
     if(D){var R=D.R;v.D={phase:D.phase,round:D.round,rounds:D.rounds,a:D.a,b:D.b};
       if(D.x&&(D.phase==='x'||D.phase==='xres'||D.phase==='xintro'))v.D.x={id:D.x.id,earner:D.x.earner,opp:D.x.opp,L:D.x.L,el:n-D.x.start,res:D.x.res};
-      if(D.offer){var O=D.offer;v.D.offer={id:O.id,state:O.state,to:O.to,from:O.from,res:O.res,left:Math.max(0,O.until-n)};
-        if(pid===O.to){v.D.offer.q={cat:O.q.cat,text:O.q.text,o:O.q.o};if(O.state!=='pending')v.D.offer.q.ans=O.q.ans;}}
+      if(D.offer){var O=D.offer;v.D.offer={id:O.id,state:O.state,to:O.to,from:O.from,out:O.out,left:Math.max(0,O.until-n)};
+        if(pid===O.to||O.state==='done'){v.D.offer.q={cat:O.q.cat,text:O.q.text,o:O.q.o};if(O.state==='done')v.D.offer.q.ans=O.q.ans;}}
       if(D.phase!=='done'){
         v.D.R={streak:R.streak,rp:R.rp,mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
         var st=R.step;
@@ -867,7 +881,7 @@ document.addEventListener('keydown',function(e){if(dph()!=='run'||V.R.mover!==my
 function buildQ(s){
   var q=s.q,b=$('#qbox');
   b.innerHTML='<span class="qcat">'+esc(q.cat)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
-    '<button class="passb" id="bpass">🔁 مقايضة: أعطِ السؤال لخصمك وخذ غيره <span id="pl"></span></button>';
+    '<button class="passb" id="bpass">🔁 راهِن خصمك بهذا السؤال وخذ غيره <span id="pl"></span></button>';
   $('#bpass').onclick=function(){var st=V.R.step;if(!st||st.qRes!=null||st.passed||st.passesLeft<=0)return;this.disabled=true;send({t:'pass',sid:st.id});};
   Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(btn){btn.onclick=function(){
     if(V.R.step.qRes!=null||V.R.stun-since()>0)return;Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(x){x.disabled=true;});
@@ -881,23 +895,34 @@ var offerKey='';
 function renderOffer(role){
   var box=$('#offer');if(!box)return;var O=V.offer;
   var sqb=$('#sq');if(sqb)sqb.style.display=(O&&O.to===myPid&&O.state==='pending')?'none':'';
+  var qb=$('#qbox');if(qb)qb.style.display=(O&&O.to===myPid&&O.state==='bounced')?'none':'';
   if(!O){if(offerKey){offerKey='';box.innerHTML='';}return;}
-  var mine=O.to===myPid,k=O.id+':'+O.state;
+  var holder=O.to===myPid,iRun=O.from===myPid,k=O.id+':'+O.state;
   if(k===offerKey){var ol=$('#oleft');if(ol)ol.textContent=Math.max(0,Math.ceil((O.left-since())/1000));return;}
   offerKey=k;
-  if(mine&&O.state==='pending'){
-    box.innerHTML='<div class="offer"><b>🔁 مقايضة! أعطاك خصمك سؤاله</b><div class="legend">أجب صح = <b>+'+1+'</b> لك • الخطأ لا يُحسب عليك • ⏱ <span id="oleft"></span></div>'+
-      '<div class="qt" style="font-size:15px">'+esc(O.q.text)+'</div><div class="opts sm">'+O.q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
-      '<button class="passb" id="odec">✖ رفض</button></div>';
-    Array.prototype.forEach.call(box.querySelectorAll('.opts button'),function(b){b.onclick=function(){Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){x.disabled=true;});send({t:'oans',oid:O.id,a:+b.dataset.i});};});
-    $('#odec').onclick=function(){this.disabled=true;send({t:'odecline',oid:O.id});};
-    return;}
+  function opts(){return '<div class="qt" style="font-size:15px">'+esc(O.q.text)+'</div><div class="opts sm">'+O.q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>';}
+  function wire(){Array.prototype.forEach.call(box.querySelectorAll('.opts button'),function(b){b.onclick=function(){Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){x.disabled=true;});send({t:'oans',oid:O.id,a:+b.dataset.i});};});}
+  if(O.state==='pending'&&holder){
+    box.innerHTML='<div class="offer"><b>🔁 رهان! خصمك يراهن أنك لا تعرف هذا السؤال</b>'+
+      '<div class="legend">أجب صح = <b>+2</b> لك و<b>−1</b> له • خطأ أو تأخر = <b>+1</b> له • ⏱ <span id="oleft"></span></div>'+opts()+
+      '<button class="passb" id="obnc">🔄 اقلب الرهان عليه: هو يجيب، صح = +2 له • خطأ = −2 عليه و+1 لك</button></div>';
+    wire();$('#obnc').onclick=function(){this.disabled=true;send({t:'obounce',oid:O.id});};return;}
+  if(O.state==='bounced'&&holder){
+    box.innerHTML='<div class="offer hot"><b>🔄 قلب خصمك الرهان عليك!</b><div class="legend">أجب صح = <b>+2</b> لك • خطأ أو تأخر = <b>−2</b> عليك و<b>+1</b> له • ⏱ <span id="oleft"></span></div>'+opts()+'</div>';
+    wire();return;}
   var msg;
-  if(O.state==='pending')msg=mine?'':'🔁 أعطيتَ السؤال لخصمك… ينتظر إجابته (⏱ <span id="oleft"></span>)';
-  else if(O.state==='answered')msg=mine?(O.res?'✅ أصبت في سؤال المقايضة: +1 لك':'❌ أخطأت في سؤال المقايضة — لا شيء عليك'):(O.res?'🔁 خصمك أجاب سؤالك صحيحاً (+1 له)':'🔁 خصمك أخطأ في سؤالك');
-  else if(O.state==='declined')msg=mine?'رفضتَ سؤال المقايضة':'🔁 خصمك رفض سؤالك';
-  else msg=mine?'⏱ انتهى وقت سؤال المقايضة':'⏱ لم يُجب خصمك عن سؤالك';
-  if(mine&&O.state==='answered'&&O.res)pop('+1','#2ecc71');
+  if(O.state==='pending')msg='🔁 راهنتَ خصمك بسؤالك… ينتظر قراره (⏱ <span id="oleft"></span>)';
+  else if(O.state==='bounced')msg='🔄 قلبتَ الرهان عليه… ينتظر إجابته (⏱ <span id="oleft"></span>)';
+  else{var ans=O.q&&O.q.ans!=null?' — الإجابة: <b>'+esc(O.q.o[O.q.ans])+'</b>':'';
+    var M={opp_right:iRun?'❌ خصمك عرفها: +2 له و−1 عليك':'✅ عرفتها: +2 لك و−1 عليه',
+      opp_wrong:iRun?'✅ رهانك نجح: خصمك أخطأ، +1 لك':'❌ أخطأت: +1 لخصمك',
+      opp_timeout:iRun?'✅ لم يُجب خصمك: +1 لك':'⏱ تأخرت: +1 لخصمك',
+      run_right:iRun?'✅ أجبت صح بعد قلب الرهان: +2 لك':'❌ قلبت الرهان وعرفها: +2 له',
+      run_wrong:iRun?'❌ أخطأت بعد قلب الرهان: −2 عليك و+1 لخصمك':'✅ قلبك للرهان نجح: −2 عليه و+1 لك',
+      run_timeout:iRun?'⏱ تأخرت بعد قلب الرهان: −2 عليك و+1 لخصمك':'✅ لم يُجب: −2 عليه و+1 لك'};
+    msg=(M[O.out]||'')+ans;
+    var good=(iRun&&/^(opp_wrong|opp_timeout|run_right)$/.test(O.out))||(!iRun&&/^(opp_right|run_wrong|run_timeout)$/.test(O.out));
+    pop(good?'👍':'👎',good?'#2ecc71':'#ff4757');}
   box.innerHTML='<div class="offer done">'+msg+'</div>';
 }
 function pop(t,c){var p=$('#pop');p.textContent=t;p.style.color=c;p.classList.remove('on');void p.offsetWidth;p.classList.add('on');}
@@ -912,7 +937,7 @@ function updateRun(role){
   renderOffer(role);
   var st=$('#st');
   if(role==='m'){
-    var pb=$('#bpass');if(pb){var off=V.offer&&V.offer.state==='pending';pb.disabled=s.qRes!=null||s.passed||s.passesLeft<=0||off||stun;$('#pl').textContent='('+s.passesLeft+' متبقية)';}
+    var pb=$('#bpass');if(pb){var off=V.offer&&V.offer.state!=='done';pb.disabled=s.qRes!=null||s.passed||s.passesLeft<=0||off||stun;$('#pl').textContent='('+s.passesLeft+' متبقية)';}
     if(s.qRes!=null){var bs=document.querySelectorAll('#qbox .opts button');Array.prototype.forEach.call(bs,function(x,i){x.disabled=true;x.className=i===s.q.ans?'ok':'';});}
     var canGo=s.trapsSet&&!stun;
     paint('rb',{pos:R.pos,cands:stun?null:s.cands,safe:s.safe,go:canGo,stun:stun});
