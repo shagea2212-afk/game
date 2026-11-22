@@ -481,25 +481,78 @@ function buildBank(){
 
 BANK=(function(){var all=BANK.filter(function(b){return b[1].indexOf('ما عاصمة')!==0&&b[1].indexOf('ما العاصمة الرسمية')!==0;}).concat(buildBank()),seen={},out=[];
   all.forEach(function(b){if(seen[b[1]])return;seen[b[1]]=1;var o=b[2].filter(function(x,i,a){return a.indexOf(x)===i;});if(o.length===4)out.push(b);});return out;})();
+// ===== Endless generators: combinatorial questions built from verified tables =====
+function sampleN(arr,n){return shuffle(arr.slice()).slice(0,n);}
+function oddOne(cat,text,inSet,outSet){var c=sampleN(inSet,1)[0],d=sampleN(outSet.filter(function(x){return x!==c;}),3);return d.length===3?[cat,text,[c].concat(d)]:null;}
+var EL_BY={};ELEMENTS.forEach(function(e){EL_BY[e[1]]=e;});
+function elNames(syms){return syms.map(function(s){return EL_BY[s][2];});}
+var NOBLE=['He','Ne','Ar','Kr','Xe','Rn'],ALKALI=['Li','Na','K','Rb','Cs'],HALO=['F','Cl','Br','I'];
+var CONT_SKIP=['TR','RU','CY','AM','AZ','GE','KZ','EG'],CONT_NAME={af:'أفريقيا',as:'آسيا',eu:'أوروبا',am:'الأمريكتين',oc:'أوقيانوسيا'};
+var OLY_FIRST=[['أثينا',1896],['باريس',1900],['سانت لويس',1904],['لندن',1908],['ستوكهولم',1912],['أنتويرب',1920],['أمستردام',1928],['لوس أنجلوس',1932],['برلين',1936],['هلسنكي',1952],
+['ملبورن',1956],['روما',1960],['طوكيو',1964],['مكسيكو سيتي',1968],['ميونخ',1972],['مونتريال',1976],['موسكو',1980],['سيول',1988],['برشلونة',1992],['أتلانتا',1996],['سيدني',2000],['بكين',2008],['ريو دي جانيرو',2016]];
+var WC_WIN=['البرازيل','ألمانيا','إيطاليا','الأرجنتين','فرنسا','الأوروغواي','إنجلترا','إسبانيا'];
+var WC_NEVER=['هولندا','البرتغال','بلجيكا','كرواتيا','المكسيك','السويد','المجر','المغرب','اليابان','الولايات المتحدة','كوريا الجنوبية','الدنمارك','سويسرا','كولومبيا','تشيلي'];
+var EURO_WIN=['إسبانيا','إيطاليا','ألمانيا','فرنسا','هولندا','الدنمارك','اليونان','البرتغال'];
+var EURO_NEVER=['إنجلترا','بلجيكا','كرواتيا','السويد','سويسرا','النمسا','بولندا','أوكرانيا','تركيا','ويلز','النرويج','صربيا'];
+var UCL_WIN=['ريال مدريد','برشلونة','بايرن ميونخ','ميلان','ليفربول','تشيلسي','مانشستر يونايتد','مانشستر سيتي','إنتر ميلان','يوفنتوس','بورتو','أياكس','بوروسيا دورتموند','باريس سان جيرمان','مارسيليا','بنفيكا','نوتنغهام فورست','أستون فيلا','سلتيك','هامبورغ','فينورد','آيندهوفن'];
+var UCL_NEVER=['أرسنال','توتنهام','أتلتيكو مدريد','نابولي','روما','فالنسيا','باير ليفركوزن','لاتسيو','إشبيلية','موناكو','ليون','فياريال','غلطة سراي'];
+var GENS={
+ 'علوم':[
+  function(){var e=sampleN(ELEMENTS,4),mx=e.slice().sort(function(a,b){return b[0]-a[0];})[0];return ['علوم','أيّ هذه العناصر عدده الذري هو الأكبر؟',[mx[2]].concat(e.filter(function(x){return x!==mx;}).map(function(x){return x[2];}))];},
+  function(){var e=sampleN(ELEMENTS,4),mn=e.slice().sort(function(a,b){return a[0]-b[0];})[0];return ['علوم','أيّ هذه العناصر عدده الذري هو الأصغر؟',[mn[2]].concat(e.filter(function(x){return x!==mn;}).map(function(x){return x[2];}))];},
+  function(){var others=ELEMENTS.filter(function(e){return NOBLE.indexOf(e[1])<0;}).map(function(e){return e[2];});return oddOne('علوم','أيّ هذه العناصر من الغازات النبيلة؟',elNames(NOBLE),others);},
+  function(){var others=ELEMENTS.filter(function(e){return ALKALI.indexOf(e[1])<0&&e[1]!=='H';}).map(function(e){return e[2];});return oddOne('علوم','أيّ هذه العناصر من الفلزات القلوية؟',elNames(ALKALI),others);},
+  function(){var others=ELEMENTS.filter(function(e){return HALO.indexOf(e[1])<0;}).map(function(e){return e[2];});return oddOne('علوم','أيّ هذه العناصر من الهالوجينات؟',elNames(HALO),others);}
+ ],
+ 'جغرافيا':[
+  function(){var reg=sampleN(['af','as','eu','am','oc'],1)[0],ok=COUNTRIES.filter(function(c){return CONT_SKIP.indexOf(c[0])<0;});
+    return oddOne('جغرافيا','أيّ هذه الدول تقع في '+CONT_NAME[reg]+'؟',ok.filter(function(c){return c[3]===reg;}).map(function(c){return c[1];}),ok.filter(function(c){return c[3]!==reg;}).map(function(c){return c[1];}));},
+  function(){var c=sampleN(COUNTRIES.filter(function(x){return x[2];}),1)[0],same=COUNTRIES.filter(function(x){return x[3]===c[3]&&x!==c;});
+    return ['جغرافيا','«'+c[2]+'» عاصمةُ أيّ دولة؟',[c[1]].concat(sampleN(same,3).map(function(x){return x[1];}))];},
+  function(){var c=sampleN(COUNTRIES,1)[0],same=COUNTRIES.filter(function(x){return x[3]===c[3]&&x!==c;});
+    return ['جغرافيا','ما علم '+c[1]+'؟',[flagOf(c[0])].concat(sampleN(same,3).map(function(x){return flagOf(x[0]);})),1];}
+ ],
+ 'تاريخ':[
+  function(){var e=sampleN(EVENTS,4),ys=e.map(function(x){return x[1];});if(new Set(ys).size<4)return null;var f=e.slice().sort(function(a,b){return a[1]-b[1];});
+    return ['تاريخ','أيّ هذه الأحداث وقع أولاً؟',[f[0][0]].concat(f.slice(1).map(function(x){return x[0];}))];},
+  function(){var e=sampleN(EVENTS,4),ys=e.map(function(x){return x[1];});if(new Set(ys).size<4)return null;var f=e.slice().sort(function(a,b){return b[1]-a[1];});
+    return ['تاريخ','أيّ هذه الأحداث وقع آخراً (الأحدث)؟',[f[0][0]].concat(f.slice(1).map(function(x){return x[0];}))];}
+ ],
+ 'رياضة':[
+  function(){var o=sampleN(OLY_FIRST,4),f=o.slice().sort(function(a,b){return a[1]-b[1];});return ['رياضة','أيّ هذه المدن استضافت الألعاب الأولمبية الصيفية قبل الأخريات؟',[f[0][0]].concat(f.slice(1).map(function(x){return x[0];}))];},
+  function(){return oddOne('رياضة','أيّ هذه المنتخبات فاز بكأس العالم لكرة القدم؟',WC_WIN,WC_NEVER);},
+  function(){return oddOne('رياضة','أيّ هذه المنتخبات لم يفز بكأس العالم لكرة القدم قط؟',WC_NEVER,WC_WIN);},
+  function(){return oddOne('رياضة','أيّ هذه المنتخبات فاز ببطولة أمم أوروبا (اليورو)؟',EURO_WIN,EURO_NEVER);},
+  function(){return oddOne('رياضة','أيّ هذه المنتخبات لم يفز ببطولة أمم أوروبا قط؟',EURO_NEVER,EURO_WIN);},
+  function(){return oddOne('رياضة','أيّ هذه الأندية لم يفز بدوري أبطال أوروبا قط؟',UCL_NEVER,UCL_WIN);},
+  function(){return oddOne('رياضة','أيّ هذه الأندية سبق أن فاز بدوري أبطال أوروبا؟',UCL_WIN,UCL_NEVER);}
+ ]
+};
+function qKey(b){return b[1]+'|'+b[2].slice().sort().join('،');}
 var SEEN=(function(){try{return JSON.parse(localStorage.getItem('bel_seen')||'{}')||{};}catch(e){return {};}})();
 function saveSeen(){try{localStorage.setItem('bel_seen',JSON.stringify(SEEN));}catch(e){}}
 var CATQ=[],LASTCAT=null;
-function unseenIn(cat){for(var i=0;i<BANK.length;i++)if(BANK[i][0]===cat&&!SEEN[BANK[i][1]])return true;return false;}
+function unseenIn(cat){if(GENS[cat])return true;for(var i=0;i<BANK.length;i++)if(BANK[i][0]===cat&&!SEEN[BANK[i][1]])return true;return false;}
 function nextCat(){
   var cs=[];BANK.forEach(function(b){if(cs.indexOf(b[0])<0)cs.push(b[0]);});
-  if(!cs.some(unseenIn)){SEEN={};saveSeen();CATQ=[];}
   for(var g=0;g<30;g++){
     if(!CATQ.length){var base=cs.filter(unseenIn);if(base.indexOf('علوم')>=0)base.push('علوم');
       for(var t=0;t<200;t++){CATQ=shuffle(base.slice());var ok=CATQ.length<2||CATQ[0]!==LASTCAT;for(var j=1;j<CATQ.length;j++)if(CATQ[j]===CATQ[j-1])ok=false;if(ok)break;}}
     var c=CATQ.shift();if(unseenIn(c)){LASTCAT=c;return c;}
   }
-  LASTCAT=cs.filter(unseenIn)[0];return LASTCAT;
+  LASTCAT='علوم';return LASTCAT;
 }
+function seenCount(){var n=0;for(var k in SEEN)n++;return n;}
 function makeQ(used,id){
-  var q={id:id,kind:'mc'},m,pool=[],i,cat=nextCat();
+  var cat=nextCat(),pool=[],i,b=null;
   for(i=0;i<BANK.length;i++)if(BANK[i][0]===cat&&!SEEN[BANK[i][1]])pool.push(i);
-  var k=pool[rnd(pool.length)];SEEN[BANK[k][1]]=1;saveSeen();
-  m=mcFrom(BANK[k][2]);q.cat=BANK[k][0];q.text=BANK[k][1];q.o=m.o;q.ans=m.ans;
+  if(pool.length&&(!GENS[cat]||rnd(2)===0)){b=BANK[pool[rnd(pool.length)]];SEEN[b[1]]=1;}
+  else if(GENS[cat]){for(var t=0;t<60&&!b;t++){var c=GENS[cat][rnd(GENS[cat].length)]();if(!c)continue;
+      var u=c[2].filter(function(x,j,a){return a.indexOf(x)===j;});if(u.length!==4)continue;var k=qKey(c);if(SEEN[k])continue;SEEN[k]=1;b=c;}}
+  if(!b){b=BANK[rnd(BANK.length)];}
+  if(seenCount()>40000)SEEN={};
+  saveSeen();
+  var m=mcFrom(b[2]),q={id:id,kind:'mc',cat:b[0],text:b[1],o:m.o,ans:m.ans};if(b[3])q.emo=1;
   return q;
 }
 var A_DEC=0.6, CENTER=0.5, CATCH_R=0.07, COLL_MS=80, XWIN=4000, XEND=6300;
