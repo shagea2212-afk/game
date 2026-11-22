@@ -578,7 +578,7 @@ function resolveX(bE,bO,cE,cO){
     finalE:(eCaught||collided)?CENTER:bE.s, finalO:(oCaught||collided)?CENTER:bO.s};
 }
 function candidates(pos){var out=[];DORDER.forEach(function(d){var r=pos[0]+DIRS[d][0],c=pos[1]+DIRS[d][1];if(r>=0&&c>=0&&c<COLS)out.push(d);});return out;}
-function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair'};var self=this;this.iv=setInterval(function(){self.tick();},150);}
+function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair',mode:'team'};var self=this;this.iv=setInterval(function(){self.tick();},150);}
 Server.prototype.now=function(){return Date.now();};
 Server.prototype.connect=function(c){this.conns.push({c:c,pid:null});};
 Server.prototype.entry=function(c){for(var i=0;i<this.conns.length;i++)if(this.conns[i].c===c)return this.conns[i];return null;};
@@ -592,7 +592,8 @@ Server.prototype.disconnect=function(c){
 Server.prototype.team=function(t){return this.S.players.filter(function(p){return p.team===t;});};
 Server.prototype.autoTeam=function(){var a=this.team(0).length,b=this.team(1).length;return a<=b?0:1;};
 Server.prototype.lobbyMsg=function(){
-  var a=this.team(0).length,b=this.team(1).length;
+  var a=this.team(0).length,b=this.team(1).length,n=this.S.players.length;
+  if(this.S.mode==='ffa')return n>=2&&n<=8?'':(n<2?'يلزم لاعبان على الأقل':'الحد الأقصى 8 لاعبين في «كلٌّ لنفسه»');
   if(a>=1&&b>=1)return '';
   return 'يلزم لاعب واحد على الأقل في كل فريق (الأحمر '+a+' — الأزرق '+b+')';
 };
@@ -610,7 +611,7 @@ Server.prototype.handle=function(c,m){
     e.pid=pid;c.send({t:'welcome',pid:pid});this.push();return;
   }
   var me=this.player(e.pid);if(!me)return;var isHost=me.id===this.hostPid;
-  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
+  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;if(m.mode==='team'||m.mode==='ffa')S.mode=m.mode;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
   if(m.t==='team'){if(S.phase!=='lobby')return;me.team=m.team===1?1:0;this.push();return;}
   if(m.t==='start'){if(isHost&&S.phase==='lobby'&&!this.lobbyMsg())this.startMatch();return;}
   if(m.t==='again'){if(isHost&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});S.duels=null;this.push();}return;}
@@ -667,7 +668,12 @@ Server.prototype.handle=function(c,m){
 };
 Server.prototype.startMatch=function(){
   var S=this.S;S.pts={};S.players.forEach(function(p){S.pts[p.id]=0;});S.history=[];
-  S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});
+  S.ffa=S.mode==='ffa';S.snatch={};
+  if(S.ffa){var ids=S.players.map(function(p){return p.id;}),nn=ids.length;S.all=ids;S.A=ids;S.B=[];S.size=nn===2?1:nn;S.team=nn>2;S.plan=[];
+    var c=ids.slice();if(c.length%2)c.push(null);var m2=c.length;
+    for(var r=0;r<m2-1;r++){var rot=[];for(var q=0;q<m2/2;q++){var x=c[q],y=c[m2-1-q];if(x&&y)rot.push(r%2?[y,x]:[x,y]);}S.plan.push(rot);c.splice(1,0,c.pop());}
+    S.rotation=0;S.rotations=S.plan.length;S.extra=0;S.phase='match';this.startRotation();return;}
+  S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});S.all=S.A.concat(S.B);
   var a=S.A.length,b=S.B.length,pairs=[],i,j;S.size=(a===1&&b===1)?1:Math.max(a,b);S.snatch={};S.team=(a+b>2);
   S.plan=[];
   if(S.format==='league'&&S.size>1){var k,rot;
@@ -712,11 +718,11 @@ Server.prototype.finishX=function(D){
 // Team matches: a bet is thrown to EVERYONE (snatch). First correct answer wins it:
 //   opposing-team player: +2 him, -1 runner | runner's teammate: +1 him (rescue). Wrong guess: -1 to that player and he's locked out.
 //   Nobody right before time runs out: runner +1. Only the direct opponent can flip the bet.
-Server.prototype.teamOf=function(pid){return this.S.A.indexOf(pid)>=0?0:1;};
+Server.prototype.teamOf=function(pid){if(this.S.ffa)return pid;return this.S.A.indexOf(pid)>=0?0:1;};
 Server.prototype.canSnatch=function(O,pid){
   if(pid===O.from||O.locked[pid])return false;
   if(!this.S.team)return pid===O.to;
-  return this.S.A.indexOf(pid)>=0||this.S.B.indexOf(pid)>=0;
+  return this.S.all.indexOf(pid)>=0;
 };
 Server.prototype.resolveOffer=function(D,how,pid){
   var O=D.offer;if(!O)return;var run=O.from,opp=O.to,S=this.S,self=this;
@@ -727,7 +733,7 @@ Server.prototype.resolveOffer=function(D,how,pid){
       else{this.addPts(D,pid,2);this.addPts(D,run,-1);O.out=pid===opp?'opp_right':'snatch_right';}
     }else if(how==='wrong'&&S.team){
       this.addPts(D,pid,-1);O.locked[pid]=1;
-      var left=S.A.concat(S.B).filter(function(p){return self.canSnatch(O,p);});
+      var left=S.all.filter(function(p){return self.canSnatch(O,p);});
       if(left.length){this.push();return;}
       this.addPts(D,run,1);O.out='all_wrong';
     }else{this.addPts(D,run,1);O.out=how==='timeout'?'opp_timeout':'opp_wrong';}
@@ -770,8 +776,11 @@ Server.prototype.tick=function(){
     if(!S.restUntil){S.restUntil=n+(S.rotation+1<S.rotations?5000:2500);this.push();return;}
     if(n<S.restUntil)return;
     if(S.rotation+1<S.rotations){S.rotation++;this.startRotation();return;}
-    var a=this.sum(S.A),b=this.sum(S.B);
-    S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a>b?0:1);this.push();
+    var a=this.sum(S.A),b=this.sum(S.B),self2=this;
+    if(S.ffa){var best=Math.max.apply(null,S.all.map(function(p){return self2.total(p);})),tops=S.all.filter(function(p){return self2.total(p)===best;});
+      if(tops.length>1&&S.extra<1&&S.size===1){S.extra++;}S.winner=tops.length===1?tops[0]:null;S.winTeam=-1;}
+    else S.winTeam=a===b?-1:(a>b?0:1);
+    S.phase='end';S.mid=(S.mid||0)+1;this.push();
   }
 };
 Server.prototype.offerView=function(O,pid){var n=this.now();
@@ -784,6 +793,7 @@ Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
   var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,snatchPts:S.snatch||{},
     players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:self.total(p.id)};})};
+  v.mode=S.mode;v.ffa=!!S.ffa;
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
@@ -805,7 +815,7 @@ Server.prototype.view=function(pid){
           v.D.R.step=s;}
       }}
   }
-  if(S.phase==='end'){v.winTeam=S.winTeam;v.mid=S.mid;v.history=S.history;v.A=S.A;v.B=S.B;}
+  if(S.phase==='end'){v.winner=S.winner;v.winTeam=S.winTeam;v.mid=S.mid;v.history=S.history;v.A=S.A;v.B=S.B;}
   return v;
 };
 Server.prototype.push=function(){var self=this;this.conns.forEach(function(e){if(e.pid){try{e.c.send({t:'view',v:self.view(e.pid)});}catch(err){}}});};
@@ -865,7 +875,9 @@ function onMsg(m){
 function since(){return performance.now()-rcv;}
 function dph(){return V&&V.phase==='match'&&V.D?V.D.phase:null;}
 var TEAMN=['الأحمر','الأزرق'];
-function teamOf(pid){for(var i=0;i<V.players.length;i++)if(V.players[i].id===pid)return V.players[i].team;return 0;}
+function teamOf(pid){if(V&&V.ffa&&V.phase!=='lobby')return pid;for(var i=0;i<V.players.length;i++)if(V.players[i].id===pid)return V.players[i].team;return 0;}
+function ranking(){return V.players.slice().sort(function(a,b){return b.tot-a.tot;});}
+var MEDAL=['🥇','🥈','🥉'];
 function render(){
   if(V.phase==='lobby'){stageKey='';show('lobby');renderLobby();return;}
   if(V.phase==='end'){stageKey='';show('end');renderEnd();return;}
@@ -874,6 +886,7 @@ function render(){
   $('#hround').innerHTML=ph&&ph!=='done'?'الجولة <b>'+V.round+'</b> من '+V.total+rot:'⏳'+rot;
   if(V.size===1){var me=null,op=null;V.players.forEach(function(p){if(p.id===myPid)me=p;else op=p;});
     $('#hscore').innerHTML=me&&op?'نقاطك <b>'+me.tot+'</b> — <b>'+op.tot+'</b> '+esc(op.name):'';}
+  else if(V.ffa){var rk=ranking(),mi=rk.map(function(p){return p.id;}).indexOf(myPid);$('#hscore').innerHTML='نقاطك <b>'+(rk[mi]?rk[mi].tot:0)+'</b> • ترتيبك <b>'+(mi+1)+'</b>/'+rk.length;}
   else{var mt=teamOf(myPid);$('#hscore').innerHTML='فريقك <b>'+V.teamTot[mt]+'</b> نقطة — <b>'+V.teamTot[1-mt]+'</b>';}
   if(!ph||ph==='done'){var kd='wait:'+V.rotation;if(stageKey!==kd){stageKey=kd;}buildWait();return;}
   if(ph==='xintro'){var ki='xi:'+V.x.id;if(stageKey!==ki){stageKey=ki;buildXIntro();}return;}
@@ -884,16 +897,20 @@ function render(){
   if(ph==='run')updateRun(role);
 }
 function buildWait(){
-  var h='<div class="card"><h3>✅ انتهت مواجهتك</h3><p class="legend" style="text-align:center">'+(V.rest?(V.rotation+1<V.rotations?'الدورة التالية بعد لحظات — ستواجه خصماً جديداً':'جارٍ احتساب النتيجة...'):'بانتظار انتهاء المواجهات الأخرى')+'</p><table><tr><th>المواجهة</th><th>الحالة</th></tr>';
+  var h='<div class="card"><h3>'+(V.D?'✅ انتهت مواجهتك':'⏸ استراحة في هذه الدورة')+'</h3>'+(V.D?'':'<p class="legend" style="text-align:center">ليس لك خصم في هذه الدورة. راقب الأسئلة المرمية واخطفها ⚡ لتكسب نقاطاً.</p>')+'<p class="legend" style="text-align:center">'+(V.rest?(V.rotation+1<V.rotations?'الدورة التالية بعد لحظات — ستواجه خصماً جديداً':'جارٍ احتساب النتيجة...'):'بانتظار انتهاء المواجهات الأخرى')+'</p><table><tr><th>المواجهة</th><th>الحالة</th></tr>';
   V.duels.forEach(function(d){h+='<tr><td>🔴 '+esc(nm(d.a))+' ضد 🔵 '+esc(nm(d.b))+'</td><td>'+(d.phase==='done'?'✅ انتهت':'الجولة '+d.round+'/'+d.rounds+' • 🏃 '+esc(nm(d.mover))+' — بقي '+d.row+' صفوف')+'</td></tr>';});
   h+='</table>';
-  if(V.size>1)h+='<p class="win" style="font-size:17px;margin-top:10px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
+  if(V.ffa)h+='<p class="legend" style="text-align:center;font-size:15px">'+ranking().map(function(p,i){return (MEDAL[i]||(i+1)+'.')+' '+esc(p.name)+' <b>'+p.tot+'</b>';}).join(' • ')+'</p>';
+  else if(V.size>1)h+='<p class="win" style="font-size:17px;margin-top:10px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
   $('#stage').innerHTML=h+'</div>';
 }
 function renderLobby(){
-  $('#lcode').textContent=roomCode;var host=myPid===V.host;
-  var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a;
-  var h='<h3>المواجهة: <span style="color:var(--red)">'+a+'</span> ضد <span style="color:var(--blue)">'+b+'</span></h3>';
+  $('#lcode').textContent=roomCode;var host=myPid===V.host,ffa=V.mode==='ffa';
+  var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a,h='';
+  function tg(k,l){return '<button data-m="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.mode===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
+  if(host)h+='<div style="display:flex;gap:6px;margin-bottom:8px">'+tg('team','👥 فرق')+tg('ffa','🧍 كلٌّ لنفسه')+'</div>';
+  if(ffa){h+='<h3>🧍 كلٌّ لنفسه — '+V.players.length+' لاعبين</h3><p class="legend">• كل لاعب يواجه كل لاعب آخر مرة: يجري مرة ويضع الفخاخ مرة.<br>• المواجهات تجري معاً، ومن ليس في مواجهة الآن يستطيع خطف الأسئلة المرمية ⚡.<br>• صاحب أعلى نقاط يفوز، ويظهر الترتيب 🥇🥈🥉 طوال المباراة.</p>';}
+  else{h+='<h3>المواجهة: <span style="color:var(--red)">'+a+'</span> ضد <span style="color:var(--blue)">'+b+'</span></h3>';
   if(a+b>2){
     if(host)h+='<div style="display:flex;gap:6px">'+
       '<button data-f="pair" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='pair'?'var(--gold)':'transparent')+';color:var(--tx)">مواجهة واحدة لكل لاعب</button>'+
@@ -902,12 +919,15 @@ function renderLobby(){
     h+='<p class="legend">• كل مواجهة بين لاعبَين فقط، يلعبها كلٌّ منهما بنفسه.<br>'+(a!==b?'• العدد غير متساوٍ: لاعبو الفريق الأصغر يلعبون أكثر من مواجهة، حتى يتساوى عدد المواجهات للفريقين.<br>':'')+
       '• ⚡ <b>الخطف:</b> إذا رمى لاعب سؤاله ظهر للجميع، وأسرع إجابة صحيحة تفوز: <b>+2</b> للخصم (و−1 على صاحب السؤال)، أو <b>+1</b> لزميله إن أنقذه. والخطأ <b>−1</b> على من أخطأ.<br>• مجموع نقاط الفريق الأعلى يفوز.</p>';
   }else h+='<p class="legend">اختر فريقك. يمكن أن تكون الفرق غير متساوية (مثل 1 ضد 2).</p>';
+  }
   $('#lmode').innerHTML=h;
   Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-f]'),function(x){x.onclick=function(){send({t:'mode',format:x.dataset.f});};});
+  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-m]'),function(x){x.onclick=function(){send({t:'mode',mode:x.dataset.m});};});
   function list(t){return V.players.filter(function(p){return p.team===t;}).map(function(p,i){return '<div class="pl"><span>'+(i+1)+'. '+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('')||'<div class="pl" style="color:var(--mu)">—</div>';}
-  $('#lplayers').innerHTML='<div style="display:flex;gap:8px"><div style="flex:1"><b style="color:var(--red)">🔴 الأحمر</b>'+list(0)+'</div><div style="flex:1"><b style="color:var(--blue)">🔵 الأزرق</b>'+list(1)+'</div></div>';
-  $('#lteam').innerHTML='<div style="display:flex;gap:8px"><button class="btn red" id="jt0">انضم للأحمر</button><button class="btn" style="background:var(--blue);border-color:var(--blue)" id="jt1">انضم للأزرق</button></div>';
-  $('#jt0').onclick=function(){send({t:'team',team:0});};$('#jt1').onclick=function(){send({t:'team',team:1});};
+  if(ffa){$('#lplayers').innerHTML=V.players.map(function(p,i){return '<div class="pl"><span>'+(i+1)+'. '+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('');$('#lteam').innerHTML='';}
+  else $('#lplayers').innerHTML='<div style="display:flex;gap:8px"><div style="flex:1"><b style="color:var(--red)">🔴 الأحمر</b>'+list(0)+'</div><div style="flex:1"><b style="color:var(--blue)">🔵 الأزرق</b>'+list(1)+'</div></div>';
+  if(!ffa){$('#lteam').innerHTML='<div style="display:flex;gap:8px"><button class="btn red" id="jt0">انضم للأحمر</button><button class="btn" style="background:var(--blue);border-color:var(--blue)" id="jt1">انضم للأزرق</button></div>';
+  $('#jt0').onclick=function(){send({t:'team',team:0});};$('#jt1').onclick=function(){send({t:'team',team:1});};}
   $('#lmsg').textContent=V.lobbyMsg||'';
   var bt=$('#lstart');bt.style.display=host?'block':'none';bt.disabled=!!V.lobbyMsg;
   $('#lhint').textContent=host?'هاتفك يدير المباراة: أبقِ الصفحة مفتوحة والشاشة مضاءة.':'بانتظار المضيف لبدء المباراة...';
@@ -1159,6 +1179,10 @@ function drawX(){
 }
 function renderEnd(){
   var h,mt=teamOf(myPid);
+  if(V.ffa){var rk=ranking();h='<p class="win">'+(V.winner?(V.winner===myPid?'🏆 فزت بالمركز الأول!':'🏆 '+esc(nm(V.winner))+' في المركز الأول'):'🤝 تعادل في الصدارة')+'</p>'+
+    '<table><tr><th>المركز</th><th>اللاعب</th><th>النقاط</th></tr>'+rk.map(function(p,i){return '<tr><td>'+(MEDAL[i]||(i+1))+'</td><td>'+esc(p.name)+(p.id===myPid?' (أنت)':'')+'</td><td><b>'+p.tot+'</b>'+((V.snatchPts||{})[p.id]?' <small>(⚡ '+(V.snatchPts[p.id]>0?'+':'')+V.snatchPts[p.id]+')</small>':'')+'</td></tr>';}).join('')+'</table>';
+    h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
+    $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};return;}
   if(V.size===1){var w=V.winTeam<0?null:(V.winTeam===0?V.A[0]:V.B[0]);
     h='<p class="win">'+(w?(w===myPid?'🏆 فزت!':'🏆 '+esc(nm(w))+' يفوز'):'🤝 تعادل')+'</p>';}
   else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
