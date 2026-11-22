@@ -66,6 +66,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .passb:disabled{opacity:.35}
 .opts.sm button{padding:8px 4px;font-size:14px}
 .offer{background:#2b2410;border:2px solid var(--gold);border-radius:14px;padding:9px;margin:6px 0;text-align:center}
+#snatch{position:fixed;left:8px;right:8px;bottom:8px;z-index:7;max-width:470px;margin:0 auto}
+#snatch .offer{box-shadow:0 6px 30px #000c}
 .offer.hot{background:#3a1820;border-color:var(--red)}
 .offer.done{background:#1d1e24;border-color:var(--ln);font-size:14px;padding:7px}
 .offer .opts{margin-top:6px}
@@ -81,7 +83,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 </style>
 </head>
 <body>
-<div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div><div id="pop"></div>
+<div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div><div id="pop"></div><div id="snatch"></div>
 
 <div class="screen on" id="home">
   <h1>BEHIND ENEMY LINES</h1>
@@ -114,7 +116,10 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     • الوصول إلى خط النهاية 🏁 = <b>+5</b><br>
     • وقوع العدّاء في فخ = <b>−1</b> له و<b>+1</b> لواضع الفخ<br>
     • عجلة الحظ: النقاط حسب مكان وقوف الكرة (حتى +4)<br>
-    🏆 صاحب النقاط الأعلى يفوز، وفي الفرق مجموع نقاط الفريق.
+    🏆 صاحب النقاط الأعلى يفوز، وفي الفرق مجموع نقاط الفريق.<br><br>
+    <b style="color:var(--gold)">👥 الفرق (2 ضد 2، 1 ضد 2، 3 ضد 5…):</b><br>
+    • كل مواجهة بين لاعبَين، وتجري المواجهات معاً.<br>
+    • ⚡ <b>الخطف:</b> إذا رمى لاعب سؤاله ظهر على هواتف الجميع، وأسرع إجابة صحيحة تفوز: خصمه <b>+2</b> (و−1 على صاحب السؤال)، أو زميله <b>+1</b> إن أنقذه. ومن يخطئ <b>−1</b> ولا يجيب مرة ثانية.
   </div>
 </div>
 
@@ -534,9 +539,9 @@ Server.prototype.disconnect=function(c){
 Server.prototype.team=function(t){return this.S.players.filter(function(p){return p.team===t;});};
 Server.prototype.autoTeam=function(){var a=this.team(0).length,b=this.team(1).length;return a<=b?0:1;};
 Server.prototype.lobbyMsg=function(){
-  var S=this.S,N=S.size,a=this.team(0).length,b=this.team(1).length;
-  if(a===N&&b===N)return '';
-  return 'مطلوب '+N+' ضد '+N+': الأحمر '+a+'/'+N+' — الأزرق '+b+'/'+N;
+  var a=this.team(0).length,b=this.team(1).length;
+  if(a>=1&&b>=1)return '';
+  return 'يلزم لاعب واحد على الأقل في كل فريق (الأحمر '+a+' — الأزرق '+b+')';
 };
 Server.prototype.duelOf=function(pid){var ds=this.S.duels||[];for(var i=0;i<ds.length;i++)if(ds[i].a===pid||ds[i].b===pid)return ds[i];return null;};
 Server.prototype.handle=function(c,m){
@@ -552,7 +557,7 @@ Server.prototype.handle=function(c,m){
     e.pid=pid;c.send({t:'welcome',pid:pid});this.push();return;
   }
   var me=this.player(e.pid);if(!me)return;var isHost=me.id===this.hostPid;
-  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;var sz=parseInt(m.size,10);if(sz>=1&&sz<=6)S.size=sz;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
+  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
   if(m.t==='team'){if(S.phase!=='lobby')return;me.team=m.team===1?1:0;this.push();return;}
   if(m.t==='start'){if(isHost&&S.phase==='lobby'&&!this.lobbyMsg())this.startMatch();return;}
   if(m.t==='again'){if(isHost&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});S.duels=null;this.push();}return;}
@@ -564,14 +569,17 @@ Server.prototype.handle=function(c,m){
     return;}
   var O=D.offer;
   if(m.t==='oans'||m.t==='obounce'){
-    if(!O||(O.state!=='pending'&&O.state!=='bounced')||me.id!==O.to||m.oid!==O.id)return;
-    if(m.t==='obounce'){if(O.state!=='pending')return;O.state='bounced';O.to=O.from;O.until=n+BOUNCE_MS;this.push();return;}
-    if(typeof m.a!=='number')return;this.resolveOffer(D,m.a===O.q.ans?'right':'wrong');return;
+    var OD=null;(S.duels||[]).forEach(function(d){if(d.offer&&d.offer.id===m.oid)OD=d;});if(!OD)return;var OO=OD.offer;
+    if(OO.state==='bounced'){if(m.t!=='oans'||me.id!==OO.from||typeof m.a!=='number')return;this.resolveOffer(OD,m.a===OO.q.ans?'right':'wrong',me.id);return;}
+    if(OO.state!=='pending')return;
+    if(m.t==='obounce'){if(me.id!==OO.to)return;OO.state='bounced';OO.until=n+BOUNCE_MS;this.push();return;}
+    if(typeof m.a!=='number'||!this.canSnatch(OO,me.id))return;
+    this.resolveOffer(OD,m.a===OO.q.ans?'right':'wrong',me.id);return;
   }
   if(D.phase!=='run')return;var R=D.R,st=R.step;if(!st)return;
   if(m.t==='pass'){
     if(me.id!==R.mover||st.qRes!=null||st.passed||R.passes>=MAX_PASS||m.sid!==st.id||(O&&O.state!=='done'))return;
-    D.offer={id:++this.sid,q:st.q,from:R.mover,to:R.setter,state:'pending',until:n+OFFER_MS};
+    D.offer={id:++this.sid,q:st.q,from:R.mover,to:R.setter,state:'pending',until:n+OFFER_MS,locked:{}};
     st.passed=true;R.passes++;R.stats.passes=(R.stats.passes||0)+1;st.q=makeQ(this.used,++this.qid);this.push();return;
   }
   if(m.t==='trap'){
@@ -607,12 +615,19 @@ Server.prototype.handle=function(c,m){
 Server.prototype.startMatch=function(){
   var S=this.S;S.pts={};S.players.forEach(function(p){S.pts[p.id]=0;});S.history=[];
   S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});
-  S.rotation=0;S.rotations=(S.size>1&&S.format==='league')?S.size:1;S.extra=0;
+  var a=S.A.length,b=S.B.length,pairs=[],i,j;S.size=(a===1&&b===1)?1:Math.max(a,b);S.snatch={};S.team=(a+b>2);
+  S.plan=[];
+  if(S.format==='league'&&S.size>1){var k,rot;
+    if(a<=b){for(k=0;k<b;k++){rot=[];for(i=0;i<a;i++)rot.push([S.A[i],S.B[(i+k)%b]]);S.plan.push(rot);}}
+    else{for(k=0;k<a;k++){rot=[];for(j=0;j<b;j++)rot.push([S.A[(j+k)%a],S.B[j]]);S.plan.push(rot);}}
+  }else{var mx=Math.max(a,b);for(i=0;i<mx;i++)pairs.push([S.A[i%a],S.B[i%b]]);
+    while(pairs.length){var used={},rr=[];pairs=pairs.filter(function(p){if(used[p[0]]||used[p[1]])return true;used[p[0]]=used[p[1]]=1;rr.push(p);return false;});S.plan.push(rr);}}
+  S.rotation=0;S.rotations=S.plan.length;S.extra=0;
   S.phase='match';this.startRotation();
 };
 Server.prototype.startRotation=function(){
-  var S=this.S,N=S.size,k=S.rotation,self=this;S.duels=[];S.restUntil=0;
-  for(var i=0;i<N;i++){var D={id:k*10+i,a:S.A[i],b:S.B[(i+k)%N],round:0,rounds:N===1?4:2,phase:'ready'};S.duels.push(D);}
+  var S=this.S,k=S.rotation,self=this;S.duels=[];S.restUntil=0;
+  S.plan[k].forEach(function(p,i){S.duels.push({id:k*10+i,a:p[0],b:p[1],round:0,rounds:S.size===1?4:2,phase:'ready'});});
   S.duels.forEach(function(D){self.nextRound(D);});this.push();
 };
 Server.prototype.nextRound=function(D){
@@ -641,18 +656,36 @@ Server.prototype.finishX=function(D){
 };
 // Trade = a bet. pending (opponent holds): right -> opp +2, runner -1 | wrong/timeout -> runner +1
 // bounced (runner holds, opponent flipped the bet): right -> runner +2 | wrong/timeout -> runner -2, opp +1
-Server.prototype.resolveOffer=function(D,how){
-  var O=D.offer,run=O.from,opp=O.from===D.R.mover?D.R.setter:D.R.mover;if(!O)return;
+// Team matches: a bet is thrown to EVERYONE (snatch). First correct answer wins it:
+//   opposing-team player: +2 him, -1 runner | runner's teammate: +1 him (rescue). Wrong guess: -1 to that player and he's locked out.
+//   Nobody right before time runs out: runner +1. Only the direct opponent can flip the bet.
+Server.prototype.teamOf=function(pid){return this.S.A.indexOf(pid)>=0?0:1;};
+Server.prototype.canSnatch=function(O,pid){
+  if(pid===O.from||O.locked[pid])return false;
+  if(!this.S.team)return pid===O.to;
+  return this.S.A.indexOf(pid)>=0||this.S.B.indexOf(pid)>=0;
+};
+Server.prototype.resolveOffer=function(D,how,pid){
+  var O=D.offer;if(!O)return;var run=O.from,opp=O.to,S=this.S,self=this;
   if(O.state==='pending'){
-    if(how==='right'){this.addPts(D,opp,2);this.addPts(D,run,-1);O.out='opp_right';}
-    else{this.addPts(D,run,1);O.out=how==='timeout'?'opp_timeout':'opp_wrong';}
+    if(how==='right'){
+      O.by=pid;
+      if(this.teamOf(pid)===this.teamOf(run)){this.addPts(D,pid,1);O.out='mate_right';}
+      else{this.addPts(D,pid,2);this.addPts(D,run,-1);O.out=pid===opp?'opp_right':'snatch_right';}
+    }else if(how==='wrong'&&S.team){
+      this.addPts(D,pid,-1);O.locked[pid]=1;
+      var left=S.A.concat(S.B).filter(function(p){return self.canSnatch(O,p);});
+      if(left.length){this.push();return;}
+      this.addPts(D,run,1);O.out='all_wrong';
+    }else{this.addPts(D,run,1);O.out=how==='timeout'?'opp_timeout':'opp_wrong';}
   }else if(O.state==='bounced'){
     if(how==='right'){this.addPts(D,run,2);O.out='run_right';}
     else{this.addPts(D,run,-2);this.addPts(D,opp,1);O.out=how==='timeout'?'run_timeout':'run_wrong';}
   }else return;
   O.state='done';O.doneAt=this.now();this.push();
 };
-Server.prototype.addPts=function(D,pid,v){if(!v)return;this.S.pts[pid]=(this.S.pts[pid]||0)+v;D.R.rp[pid]=(D.R.rp[pid]||0)+v;};
+Server.prototype.addPts=function(D,pid,v){if(!v)return;var S=this.S;S.pts[pid]=(S.pts[pid]||0)+v;
+  if(pid===D.R.mover||pid===D.R.setter)D.R.rp[pid]=(D.R.rp[pid]||0)+v;else S.snatch[pid]=(S.snatch[pid]||0)+v;};
 Server.prototype.endRound=function(D,done){
   var S=this.S,R=D.R,n=this.now();
   if(D.offer&&(D.offer.state==='pending'||D.offer.state==='bounced'))this.resolveOffer(D,'timeout');
@@ -688,21 +721,26 @@ Server.prototype.tick=function(){
     S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a>b?0:1);this.push();
   }
 };
+Server.prototype.offerView=function(O,pid){var n=this.now();
+  var o={id:O.id,state:O.state,to:O.to,from:O.from,out:O.out,by:O.by,left:Math.max(0,O.until-n),locked:!!O.locked[pid],can:O.state==='pending'&&this.canSnatch(O,pid)};
+  var holder=(O.state==='pending'&&(o.can||pid===O.to))||(O.state==='bounced'&&pid===O.from);
+  if(holder||O.state==='done'){o.q={cat:O.q.cat,text:O.q.text,o:O.q.o};if(O.state==='done')o.q.ans=O.q.ans;}
+  return o;};
 Server.prototype.total=function(pid){var S=this.S;return (S.pts&&S.pts[pid])||0;};
 Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
-  var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,
+  var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,snatchPts:S.snatch||{},
     players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:self.total(p.id)};})};
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
     v.duels=S.duels.map(function(D){return {a:D.a,b:D.b,round:D.round,rounds:D.rounds,phase:D.phase,mover:D.R.mover,row:D.R.pos[0]};});
-    v.rest=S.restUntil?Math.max(0,S.restUntil-n):0;
+    v.rest=S.restUntil?Math.max(0,S.restUntil-n):0;v.team=S.team;
+    if(S.team){var myD=this.duelOf(pid);v.snatch=S.duels.filter(function(d){return d!==myD&&d.offer;}).map(function(d){return self.offerView(d.offer,pid);});}
     var D=this.duelOf(pid);
     if(D){var R=D.R;v.D={phase:D.phase,round:D.round,rounds:D.rounds,a:D.a,b:D.b};
       if(D.x&&(D.phase==='x'||D.phase==='xres'||D.phase==='xintro'))v.D.x={id:D.x.id,earner:D.x.earner,opp:D.x.opp,L:D.x.L,el:n-D.x.start,res:D.x.res};
-      if(D.offer){var O=D.offer;v.D.offer={id:O.id,state:O.state,to:O.to,from:O.from,out:O.out,left:Math.max(0,O.until-n)};
-        if(pid===O.to||O.state==='done'){v.D.offer.q={cat:O.q.cat,text:O.q.text,o:O.q.o};if(O.state==='done')v.D.offer.q.ans=O.q.ans;}}
+      if(D.offer){v.D.offer=this.offerView(D.offer,pid);}
       if(D.phase!=='done'){
         v.D.R={streak:R.streak,rp:R.rp,mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
         var st=R.step;
@@ -801,23 +839,24 @@ function buildWait(){
 }
 function renderLobby(){
   $('#lcode').textContent=roomCode;var host=myPid===V.host;
-  var h='<h3>نمط اللعب</h3>';
-  if(host){
-    h+='<div class="tools" style="display:flex;gap:6px;flex-wrap:wrap">'+[1,2,3,4,5,6].map(function(n){return '<button data-s="'+n+'" class="pl" style="flex:1 1 28%;justify-content:center;border:2px solid '+(V.size===n?'var(--gold)':'transparent')+';color:var(--tx)">'+n+' ضد '+n+'</button>';}).join('')+'</div>';
-    if(V.size>1)h+='<p class="legend">طريقة المواجهات:</p><div style="display:flex;gap:6px">'+
+  var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a;
+  var h='<h3>المواجهة: <span style="color:var(--red)">'+a+'</span> ضد <span style="color:var(--blue)">'+b+'</span></h3>';
+  if(a+b>2){
+    if(host)h+='<div style="display:flex;gap:6px">'+
       '<button data-f="pair" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='pair'?'var(--gold)':'transparent')+';color:var(--tx)">مواجهة واحدة لكل لاعب</button>'+
       '<button data-f="league" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='league'?'var(--gold)':'transparent')+';color:var(--tx)">كل لاعب ضد كل لاعب</button></div>';
-  }else h+='<p style="text-align:center">'+V.size+' ضد '+V.size+(V.size>1?' — '+(V.format==='league'?'كل لاعب ضد كل لاعب':'مواجهة واحدة لكل لاعب'):'')+'</p>';
-  if(V.size>1)h+='<p class="legend">'+(V.format==='league'?'يواجه كل لاعب جميع لاعبي الفريق الآخر واحداً بعد الآخر ('+V.size+' دورات)، وكل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.':'يُقابَل اللاعب الأول بالأول والثاني بالثاني وهكذا. كل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.')+' المواجهات تجري في الوقت نفسه، ومجموع نقاط الفريق الأعلى يفوز.</p>';
+    else h+='<p style="text-align:center">'+(V.format==='league'?'كل لاعب ضد كل لاعب':'مواجهة واحدة لكل لاعب')+'</p>';
+    h+='<p class="legend">• كل مواجهة بين لاعبَين فقط، يلعبها كلٌّ منهما بنفسه.<br>'+(a!==b?'• العدد غير متساوٍ: لاعبو الفريق الأصغر يلعبون أكثر من مواجهة، حتى يتساوى عدد المواجهات للفريقين.<br>':'')+
+      '• ⚡ <b>الخطف:</b> إذا رمى لاعب سؤاله ظهر للجميع، وأسرع إجابة صحيحة تفوز: <b>+2</b> للخصم (و−1 على صاحب السؤال)، أو <b>+1</b> لزميله إن أنقذه. والخطأ <b>−1</b> على من أخطأ.<br>• مجموع نقاط الفريق الأعلى يفوز.</p>';
+  }else h+='<p class="legend">اختر فريقك. يمكن أن تكون الفرق غير متساوية (مثل 1 ضد 2).</p>';
   $('#lmode').innerHTML=h;
-  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-s]'),function(b){b.onclick=function(){send({t:'mode',size:+b.dataset.s,format:V.format});};});
-  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-f]'),function(b){b.onclick=function(){send({t:'mode',size:V.size,format:b.dataset.f});};});
+  Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-f]'),function(x){x.onclick=function(){send({t:'mode',format:x.dataset.f});};});
   function list(t){return V.players.filter(function(p){return p.team===t;}).map(function(p,i){return '<div class="pl"><span>'+(i+1)+'. '+(p.id===V.host?'👑 ':'')+esc(p.name)+(p.id===myPid?' (أنت)':'')+(p.on?'':' ⚠️')+'</span></div>';}).join('')||'<div class="pl" style="color:var(--mu)">—</div>';}
   $('#lplayers').innerHTML='<div style="display:flex;gap:8px"><div style="flex:1"><b style="color:var(--red)">🔴 الأحمر</b>'+list(0)+'</div><div style="flex:1"><b style="color:var(--blue)">🔵 الأزرق</b>'+list(1)+'</div></div>';
   $('#lteam').innerHTML='<div style="display:flex;gap:8px"><button class="btn red" id="jt0">انضم للأحمر</button><button class="btn" style="background:var(--blue);border-color:var(--blue)" id="jt1">انضم للأزرق</button></div>';
   $('#jt0').onclick=function(){send({t:'team',team:0});};$('#jt1').onclick=function(){send({t:'team',team:1});};
   $('#lmsg').textContent=V.lobbyMsg||'';
-  var b=$('#lstart');b.style.display=host?'block':'none';b.disabled=!!V.lobbyMsg;
+  var bt=$('#lstart');bt.style.display=host?'block':'none';bt.disabled=!!V.lobbyMsg;
   $('#lhint').textContent=host?'هاتفك يدير المباراة: أبقِ الصفحة مفتوحة والشاشة مضاءة.':'بانتظار المضيف لبدء المباراة...';
 }
 $('#lstart').onclick=function(){send({t:'start'});};
@@ -891,39 +930,68 @@ function buildSQ(s){
   var b=$('#sq');if(!b||!s.q)return;var q=s.q;
   b.innerHTML='<span class="qcat">👀 سؤال خصمك الآن • '+esc(q.cat)+'</span><div class="qt" style="font-size:15px">'+esc(q.text)+'</div><div class="opts sm">'+q.o.map(function(o){return '<button disabled>'+esc(o)+'</button>';}).join('')+'</div>';
 }
-var offerKey='';
+var offerKey='',snKey='',snHide={};
+function nm2(pid){return pid===myPid?'أنت':esc(nm(pid));}
+function offerResult(O){
+  var f=esc(nm(O.from)),by=O.by?esc(nm(O.by)):'',me=myPid,ans=O.q&&O.q.ans!=null?' — الإجابة: <b>'+esc(O.q.o[O.q.ans])+'</b>':'',t;
+  switch(O.out){
+    case 'opp_right':case 'snatch_right':
+      t=O.by===me?'⚡ عرفتَ سؤال '+f+': <b>+2</b> لك و<b>−1</b> عليه':O.from===me?'❌ '+by+' عرف سؤالك: <b>+2</b> له و<b>−1</b> عليك':'⚡ '+by+' خطف سؤال '+f+': <b>+2</b> له و<b>−1</b> على '+f;break;
+    case 'mate_right':
+      t=O.by===me?'🛡️ أنقذتَ زميلك '+f+': <b>+1</b> لك':O.from===me?'🛡️ زميلك '+by+' أنقذك: <b>+1</b> له':'🛡️ '+by+' أنقذ زميله '+f+': <b>+1</b> له';break;
+    case 'all_wrong':case 'opp_wrong':case 'opp_timeout':
+      t=O.from===me?'✅ رهانك نجح، لم يعرفه أحد: <b>+1</b> لك':'✅ لم يعرفه أحد: <b>+1</b> لـ'+f;break;
+    case 'run_right':
+      t=O.from===me?'✅ قُلب الرهان عليك فأجبت صح: <b>+2</b> لك':'🔄 قُلب الرهان على '+f+' فأجاب صح: <b>+2</b> له';break;
+    default:
+      t=O.from===me?'❌ قُلب الرهان عليك فلم تُصب: <b>−2</b> عليك و<b>+1</b> لخصمك':O.to===me?'✅ قلبك للرهان نجح: <b>−2</b> عليه و<b>+1</b> لك':'🔄 قُلب الرهان على '+f+' فلم يُصب: <b>−2</b> عليه';
+  }
+  return t+ans;
+}
+function offerHtml(O,inline){
+  var opts=O.q?'<div class="qt" style="font-size:15px">'+esc(O.q.text)+'</div><div class="opts sm">'+O.q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>':'';
+  if(O.state==='pending'&&O.can){
+    var head=V.team?(O.to===myPid?'⚡ رهان! '+esc(nm(O.from))+' رمى سؤاله — أسرع إجابة صحيحة تفوز':'⚡ خطف! '+esc(nm(O.from))+' رمى سؤاله للجميع'):'🔁 رهان! خصمك يراهن أنك لا تعرف هذا السؤال';
+    var mate=V.team&&teamOf(O.from)===teamOf(myPid);
+    var rule=V.team?(mate?'زميلك! أنقذه: صح = <b>+1</b> لك • خطأ = <b>−1</b> عليك':'صح = <b>+2</b> لك و<b>−1</b> عليه • خطأ = <b>−1</b> عليك')+' • ⏱ <span class="oleft"></span>'
+      :'أجب صح = <b>+2</b> لك و<b>−1</b> له • خطأ أو تأخر = <b>+1</b> له • ⏱ <span class="oleft"></span>';
+    return '<div class="offer"><b>'+head+'</b><div class="legend">'+rule+'</div>'+opts+
+      (O.to===myPid?'<button class="passb obnc">🔄 اقلب الرهان عليه: هو يجيب، صح = +2 له • خطأ = −2 عليه و+1 لك</button>':'')+
+      (inline?'':'<button class="passb ohide">إخفاء</button>')+'</div>';}
+  if(O.state==='bounced'&&O.from===myPid)
+    return '<div class="offer hot"><b>🔄 قلب خصمك الرهان عليك!</b><div class="legend">أجب صح = <b>+2</b> لك • خطأ أو تأخر = <b>−2</b> عليك و<b>+1</b> له • ⏱ <span class="oleft"></span></div>'+opts+'</div>';
+  if(O.state==='pending'&&O.locked)return '<div class="offer done">❌ أخطأت (−1) — بانتظار الآخرين…</div>';
+  if(O.state==='pending')return '<div class="offer done">'+(O.from===myPid?'🔁 رميتَ سؤالك'+(V.team?' للجميع':' على خصمك')+'… (⏱ <span class="oleft"></span>)':'⚡ '+esc(nm(O.from))+' رمى سؤاله… (⏱ <span class="oleft"></span>)')+'</div>';
+  if(O.state==='bounced')return '<div class="offer done">🔄 قُلب الرهان على '+nm2(O.from)+'… (⏱ <span class="oleft"></span>)</div>';
+  return '<div class="offer done">'+offerResult(O)+'</div>';
+}
+function wireOffer(box,O){
+  Array.prototype.forEach.call(box.querySelectorAll('.opts button'),function(b){b.onclick=function(){Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){x.disabled=true;});send({t:'oans',oid:O.id,a:+b.dataset.i});};});
+  var bn=box.querySelector('.obnc');if(bn)bn.onclick=function(){this.disabled=true;send({t:'obounce',oid:O.id});};
+  var hd=box.querySelector('.ohide');if(hd)hd.onclick=function(){snHide[O.id]=1;box.innerHTML='';snKey='';};
+}
+function tickLeft(box,O){Array.prototype.forEach.call(box.querySelectorAll('.oleft'),function(e){e.textContent=Math.max(0,Math.ceil((O.left-since())/1000));});}
+function goodFor(O){if(!O.out)return null;var t=teamOf(myPid),pts={opp_right:[O.by,O.from],snatch_right:[O.by,O.from],mate_right:[O.by,null],all_wrong:[O.from,null],opp_wrong:[O.from,null],opp_timeout:[O.from,null],run_right:[O.from,null],run_wrong:[O.to,O.from],run_timeout:[O.to,O.from]}[O.out];
+  if(!pts)return null;if(pts[0]===myPid)return true;if(pts[1]===myPid)return false;return null;}
 function renderOffer(role){
   var box=$('#offer');if(!box)return;var O=V.offer;
-  var sqb=$('#sq');if(sqb)sqb.style.display=(O&&O.to===myPid&&O.state==='pending')?'none':'';
-  var qb=$('#qbox');if(qb)qb.style.display=(O&&O.to===myPid&&O.state==='bounced')?'none':'';
+  var sqb=$('#sq');if(sqb)sqb.style.display=(O&&O.state==='pending'&&O.can)?'none':'';
+  var qb=$('#qbox');if(qb)qb.style.display=(O&&O.state==='bounced'&&O.from===myPid)?'none':'';
   if(!O){if(offerKey){offerKey='';box.innerHTML='';}return;}
-  var holder=O.to===myPid,iRun=O.from===myPid,k=O.id+':'+O.state;
-  if(k===offerKey){var ol=$('#oleft');if(ol)ol.textContent=Math.max(0,Math.ceil((O.left-since())/1000));return;}
-  offerKey=k;
-  function opts(){return '<div class="qt" style="font-size:15px">'+esc(O.q.text)+'</div><div class="opts sm">'+O.q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>';}
-  function wire(){Array.prototype.forEach.call(box.querySelectorAll('.opts button'),function(b){b.onclick=function(){Array.prototype.forEach.call(box.querySelectorAll('button'),function(x){x.disabled=true;});send({t:'oans',oid:O.id,a:+b.dataset.i});};});}
-  if(O.state==='pending'&&holder){
-    box.innerHTML='<div class="offer"><b>🔁 رهان! خصمك يراهن أنك لا تعرف هذا السؤال</b>'+
-      '<div class="legend">أجب صح = <b>+2</b> لك و<b>−1</b> له • خطأ أو تأخر = <b>+1</b> له • ⏱ <span id="oleft"></span></div>'+opts()+
-      '<button class="passb" id="obnc">🔄 اقلب الرهان عليه: هو يجيب، صح = +2 له • خطأ = −2 عليه و+1 لك</button></div>';
-    wire();$('#obnc').onclick=function(){this.disabled=true;send({t:'obounce',oid:O.id});};return;}
-  if(O.state==='bounced'&&holder){
-    box.innerHTML='<div class="offer hot"><b>🔄 قلب خصمك الرهان عليك!</b><div class="legend">أجب صح = <b>+2</b> لك • خطأ أو تأخر = <b>−2</b> عليك و<b>+1</b> له • ⏱ <span id="oleft"></span></div>'+opts()+'</div>';
-    wire();return;}
-  var msg;
-  if(O.state==='pending')msg='🔁 راهنتَ خصمك بسؤالك… ينتظر قراره (⏱ <span id="oleft"></span>)';
-  else if(O.state==='bounced')msg='🔄 قلبتَ الرهان عليه… ينتظر إجابته (⏱ <span id="oleft"></span>)';
-  else{var ans=O.q&&O.q.ans!=null?' — الإجابة: <b>'+esc(O.q.o[O.q.ans])+'</b>':'';
-    var M={opp_right:iRun?'❌ خصمك عرفها: +2 له و−1 عليك':'✅ عرفتها: +2 لك و−1 عليه',
-      opp_wrong:iRun?'✅ رهانك نجح: خصمك أخطأ، +1 لك':'❌ أخطأت: +1 لخصمك',
-      opp_timeout:iRun?'✅ لم يُجب خصمك: +1 لك':'⏱ تأخرت: +1 لخصمك',
-      run_right:iRun?'✅ أجبت صح بعد قلب الرهان: +2 لك':'❌ قلبت الرهان وعرفها: +2 له',
-      run_wrong:iRun?'❌ أخطأت بعد قلب الرهان: −2 عليك و+1 لخصمك':'✅ قلبك للرهان نجح: −2 عليه و+1 لك',
-      run_timeout:iRun?'⏱ تأخرت بعد قلب الرهان: −2 عليك و+1 لخصمك':'✅ لم يُجب: −2 عليه و+1 لك'};
-    msg=(M[O.out]||'')+ans;
-    var good=(iRun&&/^(opp_wrong|opp_timeout|run_right)$/.test(O.out))||(!iRun&&/^(opp_right|run_wrong|run_timeout)$/.test(O.out));
-    pop(good?'👍':'👎',good?'#2ecc71':'#ff4757');}
-  box.innerHTML='<div class="offer done">'+msg+'</div>';
+  var k=O.id+':'+O.state+':'+O.can+':'+O.locked;
+  if(k===offerKey){tickLeft(box,O);return;}
+  offerKey=k;box.innerHTML=offerHtml(O,true);wireOffer(box,O);tickLeft(box,O);
+  if(O.state==='done'){var g=goodFor(O);if(g!==null)pop(g?'👍':'👎',g?'#2ecc71':'#ff4757');}
+}
+function renderSnatch(){
+  var box=$('#snatch');if(!box)return;
+  var list=(V&&V.phase==='match'&&V.snatch)||[],O=null;
+  list.forEach(function(o){if(!O&&!snHide[o.id]&&((o.state==='pending'&&(o.can||o.locked))||(o.state==='done'&&(o.by===myPid||o.locked))))O=o;});
+  if(!O){if(snKey){snKey='';box.innerHTML='';}return;}
+  var k=O.id+':'+O.state+':'+O.can+':'+O.locked;
+  if(k===snKey){tickLeft(box,O);return;}
+  snKey=k;box.innerHTML=offerHtml(O,false);wireOffer(box,O);tickLeft(box,O);
+  if(O.state==='done'){var g=goodFor(O);if(g!==null)pop(g?'👍':'👎',g?'#2ecc71':'#ff4757');setTimeout(function(){snHide[O.id]=1;},3500);}
 }
 function pop(t,c){var p=$('#pop');p.textContent=t;p.style.color=c;p.classList.remove('on');void p.offsetWidth;p.classList.add('on');}
 function updateRun(role){
@@ -1042,7 +1110,7 @@ function renderEnd(){
     h='<p class="win">'+(w?(w===myPid?'🏆 فزت!':'🏆 '+esc(nm(w))+' يفوز'):'🤝 تعادل')+'</p>';}
   else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
   var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return b.tot-a.tot;});
-  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>النقاط</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td><b>'+p.tot+'</b></td></tr>';}).join('')+'</table>';
+  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>النقاط</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td><b>'+p.tot+'</b>'+((V.snatchPts||{})[p.id]?' <small>(⚡ خطف '+(V.snatchPts[p.id]>0?'+':'')+V.snatchPts[p.id]+')</small>':'')+'</td></tr>';}).join('')+'</table>';
   h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+'🏃 '+esc(nm(x.mover))+' <bdi>+'+x.mp+'</bdi>'+(x.done?' (وصل 🏁)':' (لم يصل)')+' • 🪤 '+esc(nm(x.setter))+' <bdi>+'+x.sp+'</bdi>';}).join('<br>')+'</p>';
   h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
   $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
@@ -1056,6 +1124,7 @@ function loop(){
   }
   if(ph==='x'||ph==='xres')drawX();
   if(ph==='xintro'&&V.x){var xc=$('#xcd');if(xc)xc.textContent=Math.max(0,Math.ceil(((V.x.el<0?-V.x.el:0)-since())/1000));}
+  if(V&&V.phase==='match')renderSnatch();else if(snKey){snKey='';$('#snatch').innerHTML='';}
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.addEventListener('beforeunload',function(e){if(isHost&&V&&V.phase!=='lobby'&&V.phase!=='end'){e.preventDefault();e.returnValue='';}});
