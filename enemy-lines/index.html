@@ -62,6 +62,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 #toast{position:fixed;bottom:18px;left:16px;right:16px;background:var(--red);padding:12px;border-radius:12px;text-align:center;display:none;z-index:10}
 .flash{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity .45s}
 .flash.on{opacity:.35;transition:none}
+#pop{direction:ltr;position:fixed;top:38%;left:0;right:0;text-align:center;font-size:54px;font-weight:900;pointer-events:none;z-index:9;opacity:0;text-shadow:0 3px 12px #000}
+#pop.on{animation:popa 1.1s ease-out}@keyframes popa{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.15)}70%{opacity:1}100%{opacity:0;transform:translateY(-50px)}}
 canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch-action:none}
 .pow{height:14px;background:var(--cell);border-radius:8px;overflow:hidden;margin:6px 0}
 .pow i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold),var(--red))}
@@ -72,7 +74,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 </style>
 </head>
 <body>
-<div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div>
+<div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div><div id="pop"></div>
 
 <div class="screen on" id="home">
   <h1>BEHIND ENEMY LINES</h1>
@@ -97,7 +99,12 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     • تُضاء لك 3 مربعات أمام خصمك.<br>
     • اضغط على مربعين منها 👆👆 فيصبحان فخّين، والثالث يبقى آمناً.<br>
     • كرر ذلك في كل خطوة يخطوها خصمك.<br><br>
-    🏁 الأسرع وصولاً إلى خط النهاية يفوز.
+    <b style="color:var(--gold)">⭐ النقاط:</b><br>
+    • إجابة صحيحة وتقدّم = <b>+2</b> &nbsp;• تخمين صحيح = <b>+1</b><br>
+    • الوصول إلى خط النهاية 🏁 = <b>+5</b><br>
+    • وقوع العدّاء في فخ = <b>−1</b> له و<b>+1</b> لواضع الفخ<br>
+    • عجلة الحظ: النقاط حسب مكان وقوف الكرة (حتى +4)<br>
+    🏆 صاحب النقاط الأعلى يفوز، وفي الفرق مجموع نقاط الفريق.
   </div>
 </div>
 
@@ -120,7 +127,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 /*CORE-START*/
-var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,X_SEC=3,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
+var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -249,10 +256,12 @@ var BANK=[
 ['دين','من الصحابي الملقب بأمين هذه الأمة؟',['أبو عبيدة بن الجراح','أبو بكر الصديق','عمر بن الخطاب','سعد بن أبي وقاص']],
 ['دين','من أول مؤذن في الإسلام؟',['بلال بن رباح','ابن أم مكتوم','عمار بن ياسر','سلمان الفارسي']]
 ];
+var CATQ=[],LASTCAT=null;
+function nextCat(){if(!CATQ.length){var cs=[];BANK.forEach(function(b){if(cs.indexOf(b[0])<0)cs.push(b[0]);});CATQ=shuffle(cs);if(CATQ[0]===LASTCAT)CATQ.push(CATQ.shift());}LASTCAT=CATQ.shift();return LASTCAT;}
 function makeQ(used,id){
-  var q={id:id,kind:'mc'},m,pool=[],i;
-  for(i=0;i<BANK.length;i++)if(!used[i])pool.push(i);
-  if(!pool.length){for(i=0;i<BANK.length;i++){delete used[i];pool.push(i);}}
+  var q={id:id,kind:'mc'},m,pool=[],i,cat=nextCat();
+  for(i=0;i<BANK.length;i++)if(!used[i]&&BANK[i][0]===cat)pool.push(i);
+  if(!pool.length){for(i=0;i<BANK.length;i++)if(BANK[i][0]===cat){delete used[i];pool.push(i);}}
   var k=pool[rnd(pool.length)];used[k]=1;m=mcFrom(BANK[k][2]);q.cat=BANK[k][0];q.text=BANK[k][1];q.o=m.o;q.ans=m.ans;
   return q;
 }
@@ -340,18 +349,20 @@ Server.prototype.handle=function(c,m){
     var gamble=st.qRes!==true;if(gamble)R.stats.gambles++;
     var dd=DIRS[m.d],np=[R.pos[0]+dd[0],R.pos[1]+dd[1]];
     if(st.traps.indexOf(m.d)>=0){
-      R.stats.traps++;R.streak=0;R.ev={t:'trap',id:++this.sid,at:np,d:m.d};R.stunUntil=n+STUN_MS;
+      R.stats.traps++;R.streak=0;R.ev={t:'trap',id:++this.sid,at:np,d:m.d,pts:-PT_TRAP};R.stunUntil=n+STUN_MS;
+      this.addPts(D,R.mover,-PT_TRAP);this.addPts(D,R.setter,PT_TRAP);
       R.pos=[Math.min(ROWS-1,R.pos[0]+1),R.pos[1]];
       this.newStep(D,n+STUN_MS);return;
     }
-    R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble};if(gamble){R.stats.gambleWins++;R.streak++;}else R.streak=0;
-    if(np[0]===0){this.endRound(D,true);return;}
+    var gain=0;if(np[0]<R.best){gain=gamble?PT_GAMBLE:PT_ANSWER;R.best=np[0];this.addPts(D,R.mover,gain);}
+    R.pos=np;R.ev={t:'safe',id:++this.sid,at:np,gamble:gamble,pts:gain};if(gamble){R.stats.gambleWins++;R.streak++;}else R.streak=0;
+    if(np[0]===0){this.addPts(D,R.mover,PT_FINISH);this.endRound(D,true);return;}
     if(R.streak>=3){R.streak=0;this.startX(D);return;}
     this.newStep(D,n);return;
   }
 };
 Server.prototype.startMatch=function(){
-  var S=this.S;S.times={};S.adj={};S.players.forEach(function(p){S.times[p.id]=[];S.adj[p.id]=0;});S.history=[];
+  var S=this.S;S.pts={};S.players.forEach(function(p){S.pts[p.id]=0;});S.history=[];
   S.A=this.team(0).map(function(p){return p.id;});S.B=this.team(1).map(function(p){return p.id;});
   S.rotation=0;S.rotations=(S.size>1&&S.format==='league')?S.size:1;S.extra=0;
   S.phase='match';this.startRotation();
@@ -363,7 +374,7 @@ Server.prototype.startRotation=function(){
 };
 Server.prototype.nextRound=function(D){
   D.round++;var mi=(D.round-1)%2,ps=[D.a,D.b];
-  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,streak:0,stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0,x:0},startAt:this.now()+READY_MS};
+  D.R={mover:ps[mi],setter:ps[1-mi],pos:START.slice(),stunUntil:0,ev:null,waited:0,streak:0,best:START[0],rp:{},stats:{correct:0,wrong:0,gambles:0,gambleWins:0,traps:0,x:0},startAt:this.now()+READY_MS};
   D.R.endAt=D.R.startAt+RUN_MS;D.phase='ready';this.push();
 };
 Server.prototype.newStep=function(D,at){
@@ -381,18 +392,18 @@ Server.prototype.finishX=function(D){
   var S=this.S,x=D.x,R=D.R,lE=x.L[x.earner]!=null?x.L[x.earner]:XWIN,lO=x.L[x.opp]!=null?x.L[x.opp]:XWIN;
   x.L[x.earner]=lE;x.L[x.opp]=lO;
   var r=resolveX(ballOf(lE,powerAt(lE)),ballOf(lO,powerAt(lO)),x.C[x.earner],x.C[x.opp]);x.res=r;
-  R.pos=[Math.max(0,Math.min(ROWS-1,R.pos[0]-r.dE)),R.pos[1]];
-  S.adj[x.opp]=(S.adj[x.opp]||0)-r.dO*X_SEC;
+  R.pos=[Math.max(0,Math.min(ROWS-1,R.pos[0]-r.dE)),R.pos[1]];R.best=Math.min(R.best,R.pos[0]);
+  this.addPts(D,x.earner,r.dE);this.addPts(D,x.opp,r.dO);
   D.phase='xres';D.until=this.now()+4500;this.push();
 };
+Server.prototype.addPts=function(D,pid,v){if(!v)return;this.S.pts[pid]=(this.S.pts[pid]||0)+v;D.R.rp[pid]=(D.R.rp[pid]||0)+v;};
 Server.prototype.endRound=function(D,done){
   var S=this.S,R=D.R,n=this.now();
-  var t=done?(n-R.startAt-R.waited)/1000:RUN_MS/1000+R.pos[0]*5;
-  t=Math.round(t*10)/10;S.times[R.mover].push(t);
-  R.result={done:done,time:t,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,done:done,time:t,stats:R.stats});
+  var mp=R.rp[R.mover]||0,sp=R.rp[R.setter]||0;
+  R.result={done:done,mp:mp,sp:sp,rowsLeft:R.pos[0]};S.history.push({rot:S.rotation,mover:R.mover,setter:R.setter,done:done,mp:mp,sp:sp,stats:R.stats});
   R.step=null;D.phase='roundEnd';D.until=n+ROUNDEND_MS;this.push();
 };
-Server.prototype.sum=function(ids){var self=this;return Math.round(ids.reduce(function(s,id){return s+self.total(id);},0)*10)/10;};
+Server.prototype.sum=function(ids){var self=this;return ids.reduce(function(s,id){return s+self.total(id);},0);};
 Server.prototype.tick=function(){
   var S=this.S,n=this.now(),self=this;if(S.phase!=='match')return;
   S.duels.forEach(function(D){var R=D.R;
@@ -403,7 +414,7 @@ Server.prototype.tick=function(){
     }else if(D.phase==='xintro'&&n>=D.until){D.phase='x';D.x.start=n;D.until=n+XEND+700;self.push();}
     else if(D.phase==='x'&&n>D.until){self.finishX(D);}
     else if(D.phase==='xres'&&n>D.until){var w=n-D.xPause;R.waited+=w;R.endAt+=w;D.x=null;
-      if(R.pos[0]===0){D.phase='run';self.endRound(D,true);return;}
+      if(R.pos[0]===0){D.phase='run';self.addPts(D,R.mover,PT_FINISH);self.endRound(D,true);return;}
       D.phase='run';self.newStep(D,n);
     }else if(D.phase==='roundEnd'&&n>D.until){
       if(D.round<D.rounds)self.nextRound(D);
@@ -415,14 +426,14 @@ Server.prototype.tick=function(){
     if(n<S.restUntil)return;
     if(S.rotation+1<S.rotations){S.rotation++;this.startRotation();return;}
     var a=this.sum(S.A),b=this.sum(S.B);
-    S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a<b?0:1);this.push();
+    S.phase='end';S.mid=(S.mid||0)+1;S.winTeam=a===b?-1:(a>b?0:1);this.push();
   }
 };
-Server.prototype.total=function(pid){var S=this.S;return Math.round(((S.times[pid]||[]).reduce(function(s,x){return s+x;},0)+((S.adj&&S.adj[pid])||0))*10)/10;};
+Server.prototype.total=function(pid){var S=this.S;return (S.pts&&S.pts[pid])||0;};
 Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
   var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,
-    players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,adj:S.adj?S.adj[p.id]||0:0,tot:S.times?self.total(p.id):0,times:S.times?S.times[p.id]||[]:[]};})};
+    players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:self.total(p.id)};})};
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
@@ -432,7 +443,7 @@ Server.prototype.view=function(pid){
     if(D){var R=D.R;v.D={phase:D.phase,round:D.round,rounds:D.rounds,a:D.a,b:D.b};
       if(D.x&&(D.phase==='x'||D.phase==='xres'||D.phase==='xintro'))v.D.x={id:D.x.id,earner:D.x.earner,opp:D.x.opp,L:D.x.L,el:n-D.x.start,res:D.x.res};
       if(D.phase!=='done'){
-        v.D.R={streak:R.streak,mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
+        v.D.R={streak:R.streak,rp:R.rp,mover:R.mover,setter:R.setter,pos:R.pos,ev:R.ev,stun:Math.max(0,R.stunUntil-n),left:Math.max(0,R.endAt-n),toStart:Math.max(0,R.startAt-n),result:R.result,stats:R.stats};
         var st=R.step;
         if(st&&D.phase==='run'){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
           if(pid===R.setter){s.traps=st.traps;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;}
@@ -509,8 +520,8 @@ function render(){
   var rot=V.rotations>1?' • الدورة '+(V.rotation+1)+'/'+V.rotations:'';
   $('#hround').innerHTML=ph&&ph!=='done'?'الجولة <b>'+V.round+'</b> من '+V.total+rot:'⏳'+rot;
   if(V.size===1){var me=null,op=null;V.players.forEach(function(p){if(p.id===myPid)me=p;else op=p;});
-    $('#hscore').innerHTML=me&&op?'زمنك <b>'+me.tot+'</b> ث — <b>'+op.tot+'</b> '+esc(op.name):'';}
-  else{var mt=teamOf(myPid);$('#hscore').innerHTML='فريقك <b>'+V.teamTot[mt]+'</b> ث — <b>'+V.teamTot[1-mt]+'</b> ث';}
+    $('#hscore').innerHTML=me&&op?'نقاطك <b>'+me.tot+'</b> — <b>'+op.tot+'</b> '+esc(op.name):'';}
+  else{var mt=teamOf(myPid);$('#hscore').innerHTML='فريقك <b>'+V.teamTot[mt]+'</b> نقطة — <b>'+V.teamTot[1-mt]+'</b>';}
   if(!ph||ph==='done'){var kd='wait:'+V.rotation;if(stageKey!==kd){stageKey=kd;}buildWait();return;}
   if(ph==='xintro'){var ki='xi:'+V.x.id;if(stageKey!==ki){stageKey=ki;buildXIntro();}return;}
   if(ph==='x'||ph==='xres'){var kx='x:'+V.x.id;if(stageKey!==kx){stageKey=kx;buildX($('#stage'));}return;}
@@ -523,7 +534,7 @@ function buildWait(){
   var h='<div class="card"><h3>✅ انتهت مواجهتك</h3><p class="legend" style="text-align:center">'+(V.rest?(V.rotation+1<V.rotations?'الدورة التالية بعد لحظات — ستواجه خصماً جديداً':'جارٍ احتساب النتيجة...'):'بانتظار انتهاء المواجهات الأخرى')+'</p><table><tr><th>المواجهة</th><th>الحالة</th></tr>';
   V.duels.forEach(function(d){h+='<tr><td>🔴 '+esc(nm(d.a))+' ضد 🔵 '+esc(nm(d.b))+'</td><td>'+(d.phase==='done'?'✅ انتهت':'الجولة '+d.round+'/'+d.rounds+' • 🏃 '+esc(nm(d.mover))+' — بقي '+d.row+' صفوف')+'</td></tr>';});
   h+='</table>';
-  if(V.size>1)h+='<p class="win" style="font-size:17px;margin-top:10px">الأحمر '+V.teamTot[0]+' ث — الأزرق '+V.teamTot[1]+' ث</p>';
+  if(V.size>1)h+='<p class="win" style="font-size:17px;margin-top:10px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
   $('#stage').innerHTML=h+'</div>';
 }
 function renderLobby(){
@@ -535,7 +546,7 @@ function renderLobby(){
       '<button data-f="pair" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='pair'?'var(--gold)':'transparent')+';color:var(--tx)">مواجهة واحدة لكل لاعب</button>'+
       '<button data-f="league" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.format==='league'?'var(--gold)':'transparent')+';color:var(--tx)">كل لاعب ضد كل لاعب</button></div>';
   }else h+='<p style="text-align:center">'+V.size+' ضد '+V.size+(V.size>1?' — '+(V.format==='league'?'كل لاعب ضد كل لاعب':'مواجهة واحدة لكل لاعب'):'')+'</p>';
-  if(V.size>1)h+='<p class="legend">'+(V.format==='league'?'يواجه كل لاعب جميع لاعبي الفريق الآخر واحداً بعد الآخر ('+V.size+' دورات)، وكل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.':'يُقابَل اللاعب الأول بالأول والثاني بالثاني وهكذا. كل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.')+' المواجهات تجري في الوقت نفسه، ومجموع أزمنة الفريق الأقل يفوز.</p>';
+  if(V.size>1)h+='<p class="legend">'+(V.format==='league'?'يواجه كل لاعب جميع لاعبي الفريق الآخر واحداً بعد الآخر ('+V.size+' دورات)، وكل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.':'يُقابَل اللاعب الأول بالأول والثاني بالثاني وهكذا. كل مواجهة جولتان: يجري كلٌّ منكما مرة ويضع الفخاخ مرة.')+' المواجهات تجري في الوقت نفسه، ومجموع نقاط الفريق الأعلى يفوز.</p>';
   $('#lmode').innerHTML=h;
   Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-s]'),function(b){b.onclick=function(){send({t:'mode',size:+b.dataset.s,format:V.format});};});
   Array.prototype.forEach.call(document.querySelectorAll('#lmode [data-f]'),function(b){b.onclick=function(){send({t:'mode',size:V.size,format:b.dataset.f});};});
@@ -570,8 +581,8 @@ function paint(id,o){
 function buildReady(role){
   var R=V.R;
   var steps=role==='m'?
-   '<b>1.</b> سيظهر لك سؤال 🧠 وأمامك 3 مربعات.<br><b>2.</b> أجب صح ← يُضاء المربع الآمن بالأخضر ✅ ← اضغطه.<br><b>3.</b> أو خمّن واضغط مربعاً 🎲. فإن وقعت في فخ تتراجع خطوة 💥.<br><b>4.</b> 3 تخمينات صحيحة متتالية = <b>عجلة الحظ 🎡</b>.'
-  :'<b>1.</b> ستُضاء لك 3 مربعات أمام خصمك 🏃.<br><b>2.</b> اضغط على <b>مربعين</b> 👆👆 = فخّان 🪤.<br><b>3.</b> المربع الثالث يبقى آمناً — اختر بذكاء أين تتركه!<br><b>4.</b> كرر ذلك في كل خطوة، ولديك 5 ثوانٍ كل مرة.';
+   '<b>1.</b> سيظهر لك سؤال 🧠 وأمامك 3 مربعات.<br><b>2.</b> أجب صح ← يُضاء المربع الآمن بالأخضر ✅ ← اضغطه = <b>+2</b>.<br><b>3.</b> أو خمّن واضغط مربعاً 🎲: صح = <b>+1</b>، فخ = <b>−1</b> وتتراجع خطوة 💥.<br><b>4.</b> 3 تخمينات صحيحة متتالية = <b>عجلة الحظ 🎡</b>. والوصول 🏁 = <b>+5</b>.'
+  :'<b>1.</b> ستُضاء لك 3 مربعات أمام خصمك 🏃.<br><b>2.</b> اضغط على <b>مربعين</b> 👆👆 = فخّان 🪤.<br><b>3.</b> المربع الثالث يبقى آمناً — اختر بذكاء أين تتركه!<br><b>4.</b> كل مرة يقع فيها خصمك في فخك = <b>+1</b> لك. لديك 5 ثوانٍ كل مرة.';
   $('#stage').innerHTML='<div class="card '+(role==='m'?'me':'enemy')+'"><h3 style="font-size:21px">'+(role==='m'?'🏃 دورك: الجري':'🪤 دورك: وضع الفخاخ')+'</h3>'+
   '<div class="legend" style="font-size:16px;line-height:2;color:var(--tx)">'+steps+'</div>'+
   '<div class="win" id="cd">7</div>'+boardHtml('rb')+'</div>';
@@ -612,9 +623,11 @@ function buildQ(s){
     if(V.R.step.qRes!=null||V.R.stun-since()>0)return;Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(x){x.disabled=true;});
     send({t:'answer',sid:s.id,a:+btn.dataset.i});};});
 }
+function pop(t,c){var p=$('#pop');p.textContent=t;p.style.color=c;p.classList.remove('on');void p.offsetWidth;p.classList.add('on');}
 function updateRun(role){
   var R=V.R,s=R.step,stun=R.stun-since()>0;
   if(R.ev&&R.ev.id!==lastEv){lastEv=R.ev.id;
+    if(R.ev.t==='trap')pop(role==='m'?'−1':'+1','#ff4757');else if(R.ev.pts&&role==='m')pop('+'+R.ev.pts,'#2ecc71');
     if(R.ev.t==='trap'){flash('#ff4757');var ce=cell('rb',R.ev.at[0],R.ev.at[1]);if(ce){ce.classList.remove('hit');void ce.offsetWidth;ce.classList.add('hit');}}
     else if(R.ev.gamble)flash('#2ecc71');}
   if(!s){paint('rb',{pos:R.pos});return;}
@@ -644,9 +657,10 @@ function updateRun(role){
 }
 function buildRoundEnd(){
   var R=V.R,r=R.result,iRan=R.mover===myPid,sx=R.stats;
-  var head=r.done?(iRan?'🏁 وصلت في '+r.time+' ث':'🏁 '+esc(nm(R.mover))+' وصل في '+r.time+' ث'):(iRan?'⏱ انتهى الوقت — بقي '+r.rowsLeft+' صفوف':'🪤 أوقفته! بقي له '+r.rowsLeft+' صفوف');
+  var head=r.done?(iRan?'🏁 وصلت إلى خط النهاية!':'🏁 '+esc(nm(R.mover))+' وصل إلى خط النهاية'):(iRan?'⏱ انتهى الوقت — بقي لك '+r.rowsLeft+' صفوف':'🪤 أوقفته! بقي له '+r.rowsLeft+' صفوف');
   $('#stage').innerHTML='<div class="card '+(iRan?'me':'enemy')+'"><h3>'+head+'</h3>'+
-    '<p class="legend" style="text-align:center">الزمن المحتسب: <b>'+r.time+'</b> ث'+(r.done?'':' (90 + 5 لكل صف متبقٍّ)')+'<br>تحديات صحيحة '+sx.correct+' • خاطئة '+sx.wrong+' • مجازفات ناجحة '+sx.gambleWins+' من '+sx.gambles+' • فخاخ '+sx.traps+'</p>'+
+    '<p class="win" style="font-size:20px">🏃 '+esc(nm(R.mover))+' <bdi>+'+r.mp+'</bdi> • 🪤 '+esc(nm(R.setter))+' <bdi>+'+r.sp+'</bdi></p>'+
+    '<p class="legend" style="text-align:center">إجابات صحيحة '+sx.correct+' • تخمينات صحيحة '+sx.gambleWins+' من '+sx.gambles+' • فخاخ '+sx.traps+(sx.x?' • عجلة الحظ '+sx.x:'')+'</p>'+
     (V.round<V.total?'<p class="win" style="font-size:18px">🔁 الجولة القادمة: '+(iRan?'أنت تضع الفخاخ':'أنت تجري')+'</p>':'<p class="win" style="font-size:18px">✅ انتهت مواجهتك</p>')+'</div>';
 }
 var XC=null;
@@ -655,8 +669,8 @@ function buildXIntro(){
   $('#stage').innerHTML='<div class="card '+(me?'me':'enemy')+'" style="text-align:center"><div style="font-size:54px">🎡</div><h3 style="font-size:22px">عجلة الحظ!</h3>'+
   '<p class="big">'+(me?'أصبت في 3 تخمينات متتالية — هذه مكافأتك!':esc(nm(x.earner))+' أصاب في 3 تخمينات متتالية — جاءت عجلة الحظ!')+'</p>'+
   '<div class="legend" style="text-align:right;font-size:15px;line-height:2">'+
-  (me?'<b>1.</b> معك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> اضغط <b>🚀 إطلاق</b> في اللحظة المناسبة: شريط القوة يتحرك، وكلما زادت القوة ذهبت الكرة أبعد.<br><b>3.</b> الرقم المكتوب حيث تتوقف كرتك هو عدد الخطوات التي تتقدمها (حتى <b>+4</b>). لا تبالغ في القوة: إن خرجت الكرة من الخط تتراجع خطوة.<br><b>4.</b> خصمك معه كرة <b style="color:var(--blue)">زرقاء 🔵</b> ويحاول أن يمسك كرتك. وأنت أيضاً تستطيع إمساك كرته: اضغط <b>✋ التقاط</b> حين تكون داخل <b style="color:var(--gold)">الدائرة الصفراء</b>.'
-     :'<b>1.</b> معك كرة <b style="color:var(--blue)">زرقاء 🔵</b>، ومع خصمك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> هدفك أن تمنعه من التقدم: اضغط <b>✋ التقاط</b> حين تكون كرته الحمراء داخل <b style="color:var(--gold)">الدائرة الصفراء</b> في الوسط، فتُلغى مكافأته ويتراجع خطوة.<br><b>3.</b> أو اضغط <b>🚀 إطلاق</b> لتصطدم كرتك بكرته في الوسط، فتُلغى مكافأته.<br><b>4.</b> انتبه: هو أيضاً يستطيع إمساك كرتك.')+
+  (me?'<b>1.</b> معك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> اضغط <b>🚀 إطلاق</b> في اللحظة المناسبة: شريط القوة يتحرك، وكلما زادت القوة ذهبت الكرة أبعد.<br><b>3.</b> الرقم المكتوب حيث تتوقف كرتك هو عدد الخطوات التي تتقدمها وعدد النقاط التي تكسبها (حتى <b>+4</b>). لا تبالغ في القوة: إن خرجت الكرة من الخط تتراجع خطوة.<br><b>4.</b> خصمك معه كرة <b style="color:var(--blue)">زرقاء 🔵</b> ويحاول أن يمسك كرتك. وأنت أيضاً تستطيع إمساك كرته: اضغط <b>✋ التقاط</b> حين تكون داخل <b style="color:var(--gold)">الدائرة الصفراء</b>.'
+     :'<b>1.</b> معك كرة <b style="color:var(--blue)">زرقاء 🔵</b>، ومع خصمك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> هدفك أن تمنعه من التقدم: اضغط <b>✋ التقاط</b> حين تكون كرته الحمراء داخل <b style="color:var(--gold)">الدائرة الصفراء</b> في الوسط، فتُلغى مكافأته ويتراجع خطوة، وتكسب أنت نقطة.<br><b>3.</b> أو اضغط <b>🚀 إطلاق</b> لتصطدم كرتك بكرته في الوسط، فتُلغى مكافأته.<br><b>4.</b> انتبه: هو أيضاً يستطيع إمساك كرتك.')+
   '</div><p class="win" id="xin">تبدأ بعد <span id="xcd">7</span></p></div>';
 }
 function buildX(el){
@@ -703,7 +717,7 @@ function drawX(){
     if(res.oCaught)p.push('✋ '+e+' التقط الكرة الزرقاء!');
     if(res.collided)p.push('💥 اصطدمت الكرتان في المركز');
     else if(res.zone)p.push('🔴 توقفت الحمراء عند: '+res.zone.l);
-    msg=p.join('<br>')+'<br><b>🏃 '+esc(e)+': '+(res.dE?(res.dE>0?'يتقدم ':'يتراجع ')+Math.abs(res.dE)+' صف':'لا تغيير')+' • 🪤 '+esc(o)+': '+(res.dO?(res.dO>0?'−':'+')+Math.abs(res.dO*3)+' ث على زمنه':'لا تغيير')+'</b>';
+    msg=p.join('<br>')+'<br><b>🏃 '+esc(e)+': '+(res.dE>=0?'+':'')+res.dE+' نقطة'+(res.dE?' و'+(res.dE>0?'يتقدم ':'يتراجع ')+Math.abs(res.dE)+' صف':'')+' • 🪤 '+esc(o)+': '+(res.dO>=0?'+':'')+res.dO+' نقطة</b>';
   }else if(tl<XWIN)msg='⏱ مهلة الإطلاق: '+Math.ceil((XWIN-tl)/1000)+' ث';
   else msg='⏳ الكرتان في الطريق...';
   var xm=$('#xm');if(xm&&xm._h!==msg){xm.innerHTML=msg;xm._h=msg;}
@@ -719,12 +733,12 @@ function drawX(){
 }
 function renderEnd(){
   var h,mt=teamOf(myPid);
-  if(V.size===1){var ps=V.players.slice().sort(function(a,b){return a.tot-b.tot;});var w=V.winTeam<0?null:(V.winTeam===0?V.A[0]:V.B[0]);
+  if(V.size===1){var w=V.winTeam<0?null:(V.winTeam===0?V.A[0]:V.B[0]);
     h='<p class="win">'+(w?(w===myPid?'🏆 فزت!':'🏆 '+esc(nm(w))+' يفوز'):'🤝 تعادل')+'</p>';}
-  else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' ث — الأزرق '+V.teamTot[1]+' ث</p>';
-  var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return a.tot-b.tot;});
-  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>مجموع الزمن</th><th>أزمنته</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td>'+p.tot+' ث</td><td>'+p.times.join(' • ')+(p.adj?' • ✖️ '+(p.adj>0?'+':'−')+Math.abs(p.adj)+' ث':'')+'</td></tr>';}).join('')+'</table>';
-  h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+esc(nm(x.mover))+' ضد فخاخ '+esc(nm(x.setter))+(x.done?' — وصل في ':' — لم يصل، احتُسب ')+x.time+' ث • مجازفات ناجحة '+x.stats.gambleWins+'/'+x.stats.gambles+' • فخاخ '+x.stats.traps;}).join('<br>')+'</p>';
+  else h='<p class="win">'+(V.winTeam<0?'🤝 تعادل':(V.winTeam===mt?'🏆 فاز فريقك!':'🏆 فاز الفريق '+TEAMN[V.winTeam]))+'</p><p class="win" style="font-size:17px">الأحمر '+V.teamTot[0]+' نقطة — الأزرق '+V.teamTot[1]+' نقطة</p>';
+  var ps2=V.players.filter(function(p){return V.A.indexOf(p.id)>=0||V.B.indexOf(p.id)>=0;}).sort(function(a,b){return b.tot-a.tot;});
+  h+='<table><tr><th>اللاعب</th>'+(V.size>1?'<th>الفريق</th>':'')+'<th>النقاط</th></tr>'+ps2.map(function(p){return '<tr><td>'+esc(p.name)+'</td>'+(V.size>1?'<td>'+(p.team?'🔵':'🔴')+'</td>':'')+'<td><b>'+p.tot+'</b></td></tr>';}).join('')+'</table>';
+  h+='<p class="legend">'+V.history.map(function(x){return (V.rotations>1?'الدورة '+(x.rot+1)+': ':'')+'🏃 '+esc(nm(x.mover))+' <bdi>+'+x.mp+'</bdi>'+(x.done?' (وصل 🏁)':' (لم يصل)')+' • 🪤 '+esc(nm(x.setter))+' <bdi>+'+x.sp+'</bdi>';}).join('<br>')+'</p>';
   h+=myPid===V.host?'<button class="btn red" id="bagain">مباراة جديدة</button>':'<p class="sub">بانتظار المضيف لبدء مباراة جديدة</p>';
   $('#endc').innerHTML=h;if($('#bagain'))$('#bagain').onclick=function(){send({t:'again'});};
 }
