@@ -78,6 +78,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .fx.boom{font-size:34px;animation:boom .7s forwards}@keyframes boom{0%{transform:scale(.3)}40%{transform:scale(1.5)}100%{opacity:0;transform:scale(2)}}
 .fx.plant{font-size:24px;animation:plant 1.4s forwards}@keyframes plant{0%{transform:translateY(-140%);opacity:0}40%{transform:translateY(0);opacity:1}55%{transform:scale(1.3,.8)}70%{transform:scale(1)}100%{opacity:0}}
 .board.shake{animation:shake .45s}@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+#mute{position:fixed;left:8px;bottom:8px;z-index:13;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#0008;color:#fff;font-size:18px;padding:0;line-height:38px}
 #coach{position:fixed;z-index:12;background:#ffb21e;color:#231800;font-size:13px;font-weight:700;line-height:1.6;padding:10px 12px;border-radius:12px;box-shadow:0 8px 24px #000a;display:none;text-align:right}
 #coach.on{display:block;animation:cin .25s}@keyframes cin{from{opacity:0;transform:translateY(6px)}}
 #coach .ar{position:absolute;width:12px;height:12px;background:#ffb21e;transform:rotate(45deg)}
@@ -104,6 +105,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 </style>
 </head>
 <body>
+<button id="mute" aria-label="الصوت"></button>
 <div id="ovl"></div><div id="toast"></div><div class="flash" id="flash"></div><div id="pop"></div><div id="coach"></div><div id="snatch"></div>
 
 <div class="screen on" id="home">
@@ -121,6 +123,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     <button class="btn" style="background:#6c4cff;border-color:#6c4cff" id="btrain">🎓 تعلّم اللعب: تدريب مع الكمبيوتر</button>
     <p class="legend" style="text-align:center;margin:0">جولتان قصيرتان ضد المدرّب 🤖 مع تلميحات تشرح كل شيء — لا يحتاج إنترنت ولا أصدقاء</p>
     <button class="btn" id="btips" style="font-size:14px;padding:10px"></button>
+    <button class="btn" id="bsnd" style="font-size:14px;padding:10px"></button>
   </div>
   <div class="card legend" style="font-size:15px;line-height:1.9">
     <b style="color:var(--tx);font-size:17px">كيف تُلعب؟ (بسيطة)</b><br>
@@ -1064,12 +1067,33 @@ function ovl(s){var o=$('#ovl');if(s){o.innerHTML=s;o.classList.add('on');}else 
 function show(id){Array.prototype.forEach.call(document.querySelectorAll('.screen'),function(e){e.classList.toggle('on',e.id===id);});}
 function send(m){if(isHost&&server)server.handle(localConn,JSON.parse(JSON.stringify(m)));else if(conn&&conn.open)conn.send(m);}
 function nm(pid){if(!V)return '؟';for(var i=0;i<V.players.length;i++)if(V.players[i].id===pid)return V.players[i].name;return '؟';}
+var SND_ON=lsGet('bel_snd',true),AC=null;
+function acx(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}if(AC.state==='suspended')AC.resume();return AC;}
+['touchstart','mousedown','keydown'].forEach(function(ev){document.addEventListener(ev,function(){var a=acx();if(a&&!a._u){a._u=1;var b=a.createBuffer(1,1,22050),s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.start(0);}},{passive:true});});
+function tone(a,t0,f,f2,dur,type,vol,vib){var o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t0);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+dur);
+  if(vib){var l=a.createOscillator(),lg=a.createGain();l.frequency.value=vib;lg.gain.value=f*0.03;l.connect(lg);lg.connect(o.frequency);l.start(t0);l.stop(t0+dur);}
+  g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(vol||0.25,t0+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+dur+0.02);}
+function noise(a,t0,dur,vol,hp){var n=Math.floor(a.sampleRate*dur),b=a.createBuffer(1,n,a.sampleRate),d=b.getChannelData(0);for(var i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  var s=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter();f.type=hp?'highpass':'lowpass';f.frequency.value=hp||900;s.buffer=b;g.gain.value=vol||0.3;s.connect(f);f.connect(g);g.connect(a.destination);s.start(t0);}
+var SFX={
+  ok:function(a,t){tone(a,t,1047,0,0.16,'triangle',0.28);tone(a,t+0.09,1568,0,0.32,'triangle',0.28);tone(a,t+0.09,3136,0,0.25,'sine',0.06);},
+  no:function(a,t){tone(a,t,220,160,0.18,'sawtooth',0.14);tone(a,t+0.2,180,110,0.32,'sawtooth',0.14);},
+  gwin:function(a,t){[523,659,784,1047,1319].forEach(function(f,i){tone(a,t+i*0.06,f,0,0.14,'square',0.09);});noise(a,t+0.3,0.25,0.12,6000);tone(a,t+0.3,2093,0,0.3,'sine',0.08);},
+  glose:function(a,t){tone(a,t,160,38,0.28,'sine',0.7);noise(a,t,0.12,0.45);tone(a,t+0.16,600,120,0.45,'square',0.08);},
+  xwin:function(a,t){[[523,0],[659,0.12],[784,0.24]].forEach(function(n){tone(a,t+n[1],n[0],0,0.16,'square',0.1);});[523,659,784,1047].forEach(function(f){tone(a,t+0.4,f,0,0.9,'triangle',0.11);});noise(a,t+0.4,0.6,0.1,5000);},
+  xdraw:function(a,t){tone(a,t,440,0,0.22,'triangle',0.2);tone(a,t+0.28,440,0,0.22,'triangle',0.2);tone(a,t+0.56,392,0,0.35,'triangle',0.16);},
+  xlose:function(a,t){[[392,0,0.3],[370,0.33,0.3],[349,0.66,0.3],[330,0.99,0.8]].forEach(function(n){tone(a,t+n[1],n[0],n[2]>0.5?262:0,n[2],'sawtooth',0.1,n[2]>0.5?6:0);});}
+};
+function sfx(k){if(!SND_ON||!SFX[k])return;var a=acx();if(!a)return;try{SFX[k](a,a.currentTime+0.02);}catch(e){}}
 function flash(col){var f=$('#flash');f.style.background=col;f.classList.add('on');setTimeout(function(){f.classList.remove('on');},60);try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}}
 var ARROW={l:'↖️',u:'⬆️',r:'↗️'},DNAME={l:'أعلى اليسار',u:'للأمام',r:'أعلى اليمين'};
 
 var TIPS=lsGet('bel_tips',{}),TIPS_ON=lsGet('bel_tips_on',true);
 $('#hname').value=lsGet('bel_name','');
 function tipsLabel(){$('#btips').textContent=TIPS_ON?'💡 التلميحات التعليمية: تعمل (اضغط للإيقاف)':'💡 التلميحات التعليمية: متوقفة (اضغط للتشغيل)';}
+function sndLabel(){$('#bsnd').textContent=SND_ON?'🔊 المؤثرات الصوتية: تعمل (اضغط للكتم)':'🔇 المؤثرات الصوتية: مكتومة (اضغط للتشغيل)';var m=$('#mute');if(m)m.textContent=SND_ON?'🔊':'🔇';}
+function togSnd(){SND_ON=!SND_ON;lsSet('bel_snd',SND_ON);sndLabel();if(SND_ON)sfx('ok');}
+sndLabel();$('#bsnd').onclick=togSnd;$('#mute').onclick=togSnd;
 tipsLabel();$('#btips').onclick=function(){TIPS_ON=!TIPS_ON;lsSet('bel_tips_on',TIPS_ON);if(TIPS_ON){TIPS={};lsSet('bel_tips',TIPS);}tipsLabel();};
 // ---- training mode: local server + bot opponent, works offline ----
 var BOT='bot-trainer';
@@ -1340,6 +1364,9 @@ function renderOffer(role){
   var sqb=$('#sq');if(sqb)sqb.style.display=(O&&O.state==='pending'&&O.can)?'none':'';
   var qb=$('#qbox');if(qb)qb.style.display=(O&&O.state==='bounced'&&O.from===myPid)?'none':'';
   if(!O){if(offerKey){offerKey='';box.innerHTML='';}return;}
+  var ok=O.id+'|'+O.state+'|'+(O.locked?1:0);if(ok!==lastOk){lastOk=ok;var me=myPid,u=O.out||'';
+    if(O.state==='done'){if(O.by===me&&/right/.test(u))sfx('ok');else if(me===O.from&&u==='run_right')sfx('ok');else if(me===O.from&&u==='run_wrong')sfx('no');else if(me===O.to&&u==='opp_wrong')sfx('no');}
+    else if(O.locked)sfx('no');}
   var k=O.id+':'+O.state+':'+O.can+':'+O.locked;
   if(k===offerKey){tickLeft(box,O);return;}
   offerKey=k;box.innerHTML=offerHtml(O,true);wireOffer(box,O);tickLeft(box,O);
@@ -1368,11 +1395,13 @@ function coach(key,sel,text){
 }
 function hideCoach(){$('#coach').classList.remove('on');if(coachEl){coachEl.classList.remove('coachring');coachEl=null;}}
 document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#coach'))hideCoach();});
+var lastQk='',lastXr=null,lastOk='';
 function pop(t,c){var p=$('#pop');p.textContent=t;p.style.color=c;p.classList.remove('on');void p.offsetWidth;p.classList.add('on');}
 function updateRun(role){
   var R=V.R,s=R.step,stun=R.stun-since()>0;
   if(R.ev&&R.ev.id!==lastEv){lastEv=R.ev.id;
     if(R.ev.t==='trap')pop(role==='m'?'−1':'+1','#ff4757');else if(R.ev.pts&&role==='m')pop('+'+R.ev.pts,'#2ecc71');
+    if(R.ev.t==='trap')sfx('glose');else if(R.ev.gamble)sfx('gwin');
     if(R.ev.t==='trap'){flash('#ff4757');knockback('rb',R.ev.at,R.pos);setTimeout(function(){revealTraps('rb',R.ev);},350);if(role==='m')coach('trap','#rb','💥 فخ! ركلك ورجعت خطوة. بعد كل حركة تظهر لك الفخاخ لحظةً 🪤 لتتعلم أماكنها.');}
     else{if(R.ev.gamble)flash('#2ecc71');revealTraps('rb',R.ev);}}
   if(!s){paint('rb',{pos:R.pos});renderOffer(role);return;}
@@ -1386,6 +1415,7 @@ function updateRun(role){
       else if(R.streak===2)coach('wheel','#st','🎡 تخمين صحيح ثالث على التوالي = <b>عجلة الحظ</b>!');
       else if(TIPS.guess)coach('bet','#bpass','🔁 سؤال صعب؟ راهِن خصمك به وخذ سؤالاً غيره — لكن قد يقلب الرهان عليك!');}
     var pb=$('#bpass');if(pb){var off=V.offer&&V.offer.state!=='done';pb.disabled=s.qRes!=null||s.passed||s.passesLeft<=0||off||stun;$('#pl').textContent='('+s.passesLeft+' متبقية)';}
+    var qk=s.id+'|'+s.qRes;if(s.qRes!=null&&qk!==lastQk)sfx(s.qRes?'ok':'no');lastQk=qk;
     if(s.qRes!=null){var bs=document.querySelectorAll('#qbox .opts button');Array.prototype.forEach.call(bs,function(x,i){x.disabled=true;x.className=i===s.q.ans?'ok':'';});}
     var canGo=s.trapsSet&&!stun;
     paint('rb',{pos:R.pos,cands:stun?null:s.cands,safe:s.safe,go:canGo,stun:stun});
@@ -1470,6 +1500,8 @@ function drawX(){
   }
   ball(x.opp,B,'#3da5ff',res?res.finalO:null);
   ball(x.earner,R,'#ff4d5e',res?res.finalE:null);
+  var msg;
+  if(res&&x.id!==lastXr){lastXr=x.id;var md=myPid===x.earner?res.dE:myPid===x.opp?res.dO:res.dE;sfx(md>0?'xwin':md<0?'xlose':'xdraw');}
   var msg;
   if(res){
     var e=nm(x.earner),o=nm(x.opp),p=[];
