@@ -112,6 +112,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .tguide{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:8px 0}.tguide div{background:var(--cell);border-radius:10px;padding:6px 2px;text-align:center;font-size:12px;color:var(--tx)}
 .tguide .ti{width:34px;height:34px;margin:0 auto 2px}.tguide b{display:block}.tguide small{color:var(--mu);font-size:10px;line-height:1.35;display:block}
 .race{margin:6px 0}.rr{display:flex;align-items:center;gap:6px;font-size:13px;margin:3px 0}.rr span{width:78px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.rr i{flex:1;height:9px;background:var(--cell);border-radius:5px;overflow:hidden;direction:rtl}.rr b{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--red));border-radius:5px;transition:width .5s}.rr.me b{background:linear-gradient(90deg,var(--teal),#2ecc71)}.rr em{font-style:normal;width:34px;text-align:center;direction:ltr}
+.bwrap{position:relative;overflow:hidden;border-radius:14px;scroll-behavior:smooth}
+.bwrap .board{margin-top:0;margin-bottom:0}
+.bleft{position:sticky;bottom:0;display:block;text-align:center;font-size:12px;color:var(--mu);background:linear-gradient(transparent,#0e0f13cc 40%);padding:10px 0 3px;margin-top:-26px;pointer-events:none}
+.bleft.near{color:var(--gold);font-weight:700}
 #mute{position:fixed;left:8px;bottom:8px;z-index:13;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#0008;color:#fff;font-size:18px;padding:0;line-height:38px}
 .dcard{background:linear-gradient(135deg,#2a1840,#1d1e24 60%);border-color:#6c4cff88}
 #bdaily{background:linear-gradient(90deg,#ff4757,#ffb21e);border:0;color:#1b0f00;font-size:19px;box-shadow:0 6px 20px #ff475755}
@@ -184,7 +188,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     • يظهر لك سؤال، وأمامك 3 مربعات.<br>
     • أجب صح ← يظهر لك المربع الآمن بالأخضر ← اضغطه وتقدّم خطوة.<br>
     • أو خمّن واضغط مربعاً مباشرة. فإن وقعت في فخ 💥 تتراجع خطوة.<br>
-    • 3 تخمينات صحيحة متتالية ← تظهر لك <b>عجلة الحظ 🎡</b> وفيها مكافأة حتى 4 خطوات.<br>
+    • 3 تخمينات صحيحة متتالية ← تظهر لك <b>عجلة الحظ 🎡</b> وفيها جائزة صغيرة: نقطة لك، أو نقطة من خصمك، أو تنزيله درجة.<br>
     • 🔁 <b>رهان السؤال:</b> ترى أن السؤال صعب؟ راهِن خصمك به وخذ سؤالاً غيره (3 مرات في الجولة). إن أجاب خصمك صح: <b>+2</b> له و<b>−1</b> عليك. وإن أخطأ: <b>+1</b> لك.<br>
     • 🔄 لكن خصمك يستطيع <b>قلب الرهان</b> عليك: فتجيب أنت عن السؤال نفسه — صح <b>+2</b> لك، خطأ <b>−2</b> عليك. فلا تهرب من سؤال إلا إن كنت واثقاً أنه صعب على خصمك!<br><br>
     <b style="color:var(--red)">🪤 إذا كان دورك وضع الفخاخ:</b><br>
@@ -196,7 +200,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     • إجابة صحيحة وتقدّم = <b>+2</b> &nbsp;• تخمين صحيح = <b>+1</b><br>
     • الوصول إلى خط النهاية 🏁 = <b>+5</b><br>
     • وقوع العدّاء في فخ = <b>−1</b> له و<b>+1</b> لواضع الفخ<br>
-    • عجلة الحظ: النقاط حسب مكان وقوف الكرة (حتى +4)<br>
+    • عجلة الحظ: جائزة صغيرة حسب مكان وقوف الكرة (+1 لك، −1 لخصمك، تنزيله درجة، أو 👑 الاثنتان)<br>
     🏆 صاحب النقاط الأعلى يفوز، وفي الفرق مجموع نقاط الفريق.<br><br>
     <b style="color:var(--gold)">👥 الفرق (2 ضد 2، 1 ضد 2، 3 ضد 5…):</b><br>
     • كل مواجهة بين لاعبَين، وتجري المواجهات معاً.<br>
@@ -225,7 +229,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 <script>
 /*CORE-START*/
 var __MR=Math.random;Math.random=(function(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};})(20261123);
-var TURN_READY=2200,TURN_MS=35000,TURN_CAP=14,COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,MAX_PASS=3,OFFER_MS=12000,BOUNCE_MS=10000,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
+var TURN_READY=2200,TURN_MS=35000,TURN_CAP=24,COLS=5,ROWS=12,START=[ROWS-1,2],RUN_MS=120000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,MAX_PASS=3,OFFER_MS=12000,BOUNCE_MS=10000,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
@@ -1303,7 +1307,7 @@ function powerAt(ms){var x=(ms/700)%2;return 1-Math.abs(x-1);}
 function ballOf(t,p){var s=0.35+p*0.73,v0=Math.sqrt(2*A_DEC*s);return {t:t,p:p,s:s,v0:v0,tStop:v0/A_DEC};}
 function distAt(b,ms){var dt=(ms-b.t)/1000;if(dt<0)return 0;if(dt>b.tStop)dt=b.tStop;return b.v0*dt-A_DEC*dt*dt/2;}
 function timeAt(b,D){if(b.s<D)return Infinity;return b.t+1000*(b.v0-Math.sqrt(Math.max(0,b.v0*b.v0-2*A_DEC*D)))/A_DEC;}
-var ZONES=[{a:0.5,b:0.6,v:0,l:'محايدة (0)'},{a:0.6,b:0.72,v:1,l:'+1'},{a:0.72,b:0.84,v:2,l:'+2'},{a:0.84,b:0.94,v:3,l:'+3'},{a:0.94,b:1.0,v:4,l:'★ +4'},{a:1.0,b:1.2,v:-1,l:'خروج −1'}];
+var ZONES=[{a:0.5,b:0.6,v:0,l:'محايدة: لا شيء'},{a:0.6,b:0.72,v:1,l:'⭐ +1 نقطة لك'},{a:0.72,b:0.84,v:2,l:'✂️ −1 نقطة من خصمك'},{a:0.84,b:0.94,v:3,l:'⬇️ تنزيل خصمك درجة'},{a:0.94,b:1.0,v:4,l:'👑 +1 لك و−1 لخصمك'},{a:1.0,b:1.2,v:-1,l:'خروج: −1 نقطة لك'}];
 function zoneOf(s){if(s<CENTER)return {v:0,l:'لم تعبر (0)'};for(var i=0;i<ZONES.length;i++)if(s>=ZONES[i].a&&s<ZONES[i].b)return ZONES[i];return ZONES[5];}
 // cE = time the EARNER tapped catch (on blue ball); cO = time OPPONENT tapped catch (on red ball)
 function resolveX(bE,bO,cE,cO){
@@ -1490,8 +1494,16 @@ Server.prototype.finishX=function(D){
   var S=this.S,x=D.x,R=D.R,lE=x.L[x.earner]!=null?x.L[x.earner]:XWIN,lO=x.L[x.opp]!=null?x.L[x.opp]:XWIN;
   x.L[x.earner]=lE;x.L[x.opp]=lO;
   var r=resolveX(ballOf(lE,powerAt(lE)),ballOf(lO,powerAt(lO)),x.C[x.earner],x.C[x.opp]);x.res=r;
-  R.pos=openPos([Math.max(0,Math.min(ROWS-1,R.pos[0]-r.dE)),R.pos[1]],R.walls);R.best=Math.min(R.best,R.pos[0]);
-  this.addPts(D,x.earner,r.dE);this.addPts(D,x.opp,r.dO);
+  // small prizes only: the runner never jumps forward, so the wheel cannot end a round by itself
+  var pE=0,pO=0,push=false;
+  if(r.eCaught){pE-=1;pO+=1;}
+  if(r.oCaught){pE+=1;pO-=1;}
+  if(!r.eCaught&&r.zone){var zv=r.zone.v;if(zv===1)pE+=1;else if(zv===2)pO-=1;else if(zv===3)push=true;else if(zv===4){pE+=1;pO-=1;}else if(zv===-1)pE-=1;}
+  r.pushed=false;
+  if(push){var ot=D.trk&&D.trk[x.opp];
+    if(ot&&ot.pos[0]<ROWS-1){ot.pos=openPos([ot.pos[0]+1,ot.pos[1]],ot.walls);r.pushed=true;}else pO-=1;}
+  r.pE=pE;r.pO=pO;
+  this.addPts(D,x.earner,pE);this.addPts(D,x.opp,pO);
   D.phase='xres';D.until=this.now()+4500;this.push();
 };
 // Trade = a bet. pending (opponent holds): right -> opp +2, runner -1 | wrong/timeout -> runner +1
@@ -1796,8 +1808,14 @@ function renderLobby(){
 }
 $('#lstart').onclick=function(){send({t:'start'});};
 
-function boardHtml(id){var h='<div class="board" id="'+id+'" style="grid-template-columns:repeat('+COLS+',1fr)">';
-  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++)h+='<div class="c" data-r="'+r+'" data-c="'+c+'"></div>';return h+'</div>';}
+var VIEW_ROWS=7.4;
+function boardHtml(id){var h='<div class="bwrap" id="'+id+'w"><div class="board" id="'+id+'" style="grid-template-columns:repeat('+COLS+',1fr)">';
+  for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++)h+='<div class="c" data-r="'+r+'" data-c="'+c+'"></div>';return h+'</div><div class="bleft" id="'+id+'l"></div></div>';}
+function camTo(id,row){var w=document.getElementById(id+'w'),b=document.getElementById(id),c0=cell(id,0,0),ce=cell(id,row,0);if(!w||!b||!c0||!ce)return;
+  var ch=c0.offsetHeight,gap=4;if(!ch)return;if(!w._fit){w.style.maxHeight=Math.round((ch+gap)*VIEW_ROWS+12)+'px';w._fit=1;}
+  var top=b.offsetTop+ce.offsetTop-w.clientHeight*0.58+ch/2;top=Math.max(0,Math.min(top,w.scrollHeight-w.clientHeight));
+  if(!w._cam){w._cam=1;w.scrollTop=top;}else if(Math.abs(w.scrollTop-top)>2){try{w.scrollTo({top:top,behavior:'smooth'});}catch(e){w.scrollTop=top;}}
+  var l=document.getElementById(id+'l');if(l){l.textContent=row<=0?'🏁 وصل!':row===1?'🏁 باقي صف واحد':row===2?'🏁 باقي صفّان':'🏁 باقي '+row+(row<=10?' صفوف':' صفاً');l.classList.toggle('near',row<=3);}}
 function cell(id,r,c){return document.querySelector('#'+id+' [data-r="'+r+'"][data-c="'+c+'"]');}
 function dirOf(pos,r,c){for(var d in DIRS)if(pos[0]+DIRS[d][0]===r&&pos[1]+DIRS[d][1]===c)return d;return null;}
 // paint: o={pos,cands,traps,safe,stun,go,picks}
@@ -1833,7 +1851,7 @@ function placeHero(id,pos,stun,force){
   var b=document.getElementById(id);if(!b||!pos)return;var sp=b.querySelector('.hero');
   if(!sp){sp=document.createElement('div');sp.className='hero';sp.innerHTML=HERO;b.appendChild(sp);}
   if(!force&&sp._lock&&performance.now()<sp._lock)return;
-  var ce=cell(id,pos[0],pos[1]);if(!ce)return;var k=ce.offsetLeft+','+ce.offsetTop+','+ce.offsetWidth;
+  var ce=cell(id,pos[0],pos[1]);if(!ce)return;camTo(id,pos[0]);var k=ce.offsetLeft+','+ce.offsetTop+','+ce.offsetWidth;
   sp.style.width=ce.offsetWidth+'px';sp.style.height=ce.offsetHeight+'px';
   if(sp._k!==k){var first=!sp._k;sp._k=k;if(first)sp.style.transition='none';sp.style.transform='translate('+ce.offsetLeft+'px,'+ce.offsetTop+'px)';
     if(first){void sp.offsetWidth;sp.style.transition='';}else{sp.classList.add('run');clearTimeout(sp._t);sp._t=setTimeout(function(){sp.classList.remove('run');},420);}}
@@ -2084,7 +2102,7 @@ function buildXIntro(){
   $('#stage').innerHTML='<div class="card '+(me?'me':'enemy')+'" style="text-align:center"><div style="font-size:54px">🎡</div><h3 style="font-size:22px">عجلة الحظ!</h3>'+
   '<p class="big">'+(me?'أصبت في 3 تخمينات متتالية — هذه مكافأتك!':esc(nm(x.earner))+' أصاب في 3 تخمينات متتالية — جاءت عجلة الحظ!')+'</p>'+
   '<div class="legend" style="text-align:right;font-size:15px;line-height:2">'+
-  (me?'<b>1.</b> معك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> اضغط <b>🚀 إطلاق</b> في اللحظة المناسبة: شريط القوة يتحرك، وكلما زادت القوة ذهبت الكرة أبعد.<br><b>3.</b> الرقم المكتوب حيث تتوقف كرتك هو عدد الخطوات التي تتقدمها وعدد النقاط التي تكسبها (حتى <b>+4</b>). لا تبالغ في القوة: إن خرجت الكرة من الخط تتراجع خطوة.<br><b>4.</b> خصمك معه كرة <b style="color:var(--blue)">زرقاء 🔵</b> ويحاول أن يمسك كرتك. وأنت أيضاً تستطيع إمساك كرته: اضغط <b>✋ التقاط</b> حين تكون داخل <b style="color:var(--gold)">الدائرة الصفراء</b>.'
+  (me?'<b>1.</b> معك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> اضغط <b>🚀 إطلاق</b> في اللحظة المناسبة: شريط القوة يتحرك، وكلما زادت القوة ذهبت الكرة أبعد.<br><b>3.</b> حيث تتوقف كرتك تكون جائزتك: <b>+1</b> نقطة لك، أو <b>✂️ −1</b> من خصمك، أو <b>⬇️</b> تنزيل خصمك درجة، أو <b>👑</b> +1 لك و−1 له. لا تبالغ في القوة: إن خرجت الكرة من الخط تخسر نقطة.<br><b>4.</b> خصمك معه كرة <b style="color:var(--blue)">زرقاء 🔵</b> ويحاول أن يمسك كرتك. وأنت أيضاً تستطيع إمساك كرته: اضغط <b>✋ التقاط</b> حين تكون داخل <b style="color:var(--gold)">الدائرة الصفراء</b>.'
      :'<b>1.</b> معك كرة <b style="color:var(--blue)">زرقاء 🔵</b>، ومع خصمك كرة <b style="color:var(--red)">حمراء 🔴</b>.<br><b>2.</b> هدفك أن تمنعه من التقدم: اضغط <b>✋ التقاط</b> حين تكون كرته الحمراء داخل <b style="color:var(--gold)">الدائرة الصفراء</b> في الوسط، فتُلغى مكافأته ويتراجع خطوة، وتكسب أنت نقطة.<br><b>3.</b> أو اضغط <b>🚀 إطلاق</b> لتصطدم كرتك بكرته في الوسط، فتُلغى مكافأته.<br><b>4.</b> انتبه: هو أيضاً يستطيع إمساك كرتك.')+
   '</div><p class="win" id="xin">تبدأ بعد <span id="xcd">7</span></p></div>';
 }
@@ -2112,7 +2130,7 @@ function drawX(){
   seg(B,0,1.1,'#2b4f7a',8);seg(R,0,0.5,'#6b2a35',8);
   var zc=['#4a5075','#2f8f5b','#3ddc84','#ffc94d','#ff9f1c','#ff4d5e'];
   ctx.font='bold '+Math.round(W*0.034)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ZONES.forEach(function(z,i){var b=Math.min(z.b,1.1);seg(R,z.a,b,zc[i],12);var p=mp((z.a+b)/2,R[0],R[1],R[2],R[3]);ctx.fillStyle='#fff';ctx.fillText(['0','+1','+2','+3','★4','−1'][i],p[0]+W*0.045,p[1]+W*0.045);});
+  ZONES.forEach(function(z,i){var b=Math.min(z.b,1.1);seg(R,z.a,b,zc[i],12);var p=mp((z.a+b)/2,R[0],R[1],R[2],R[3]);ctx.fillStyle='#fff';ctx.fillText(['0','+1','✂️','⬇️','👑','−1'][i],p[0]+W*0.045,p[1]+W*0.045);});
   var half=(W/2-m)*Math.SQRT2,cr=CATCH_R/0.55*half;
   ctx.strokeStyle='#ffc94d';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
   var res=x.res;
@@ -2126,7 +2144,7 @@ function drawX(){
   ball(x.opp,B,'#3da5ff',res?res.finalO:null);
   ball(x.earner,R,'#ff4d5e',res?res.finalE:null);
   var msg;
-  if(res&&x.id!==lastXr){lastXr=x.id;var md=myPid===x.earner?res.dE:myPid===x.opp?res.dO:res.dE;sfx(md>0?'xwin':md<0?'xlose':'xdraw');}
+  if(res&&x.id!==lastXr){lastXr=x.id;var md=myPid===x.earner?res.pE+(res.pushed?1:0):myPid===x.opp?res.pO-(res.pushed?1:0):res.pE+(res.pushed?1:0);sfx(md>0?'xwin':md<0?'xlose':'xdraw');}
   var msg;
   if(res){
     var e=nm(x.earner),o=nm(x.opp),p=[];
@@ -2134,7 +2152,8 @@ function drawX(){
     if(res.oCaught)p.push('✋ '+e+' التقط الكرة الزرقاء!');
     if(res.collided)p.push('💥 اصطدمت الكرتان في المركز');
     else if(res.zone)p.push('🔴 توقفت الحمراء عند: '+res.zone.l);
-    msg=p.join('<br>')+'<br><b>🏃 '+esc(e)+': '+(res.dE>=0?'+':'')+res.dE+' نقطة'+(res.dE?' و'+(res.dE>0?'يتقدم ':'يتراجع ')+Math.abs(res.dE)+' صف':'')+' • 🪤 '+esc(o)+': '+(res.dO>=0?'+':'')+res.dO+' نقطة</b>';
+    function sg(v){return (v>0?'+':v<0?'−':'')+Math.abs(v);}
+    msg=p.join('<br>')+'<br><b>🏃 '+esc(e)+': '+sg(res.pE)+' نقطة • 🪤 '+esc(o)+': '+sg(res.pO)+' نقطة'+(res.pushed?' و⬇️ ينزل درجة':'')+'</b>';
   }else if(tl<XWIN)msg='⏱ مهلة الإطلاق: '+Math.ceil((XWIN-tl)/1000)+' ث';
   else msg='⏳ الكرتان في الطريق...';
   var xm=$('#xm');if(xm&&xm._h!==msg){xm.innerHTML=msg;xm._h=msg;}
