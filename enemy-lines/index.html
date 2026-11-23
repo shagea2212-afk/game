@@ -79,6 +79,19 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .fx.plant{font-size:24px;animation:plant 1.4s forwards}@keyframes plant{0%{transform:translateY(-140%);opacity:0}40%{transform:translateY(0);opacity:1}55%{transform:scale(1.3,.8)}70%{transform:scale(1)}100%{opacity:0}}
 .board.shake{animation:shake .45s}@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 #mute{position:fixed;left:8px;bottom:8px;z-index:13;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#0008;color:#fff;font-size:18px;padding:0;line-height:38px}
+.dcard{background:linear-gradient(135deg,#2a1840,#1d1e24 60%);border-color:#6c4cff88}
+#bdaily{background:linear-gradient(90deg,#ff4757,#ffb21e);border:0;color:#1b0f00;font-size:19px;box-shadow:0 6px 20px #ff475755}
+.dtop{display:flex;align-items:center;gap:8px;margin:6px 0}.dtop>div{flex:1;text-align:center}.dtop b{font-size:19px;display:block}.dtop small{color:var(--mu);font-size:12px}
+.dback{width:40px;height:40px;border-radius:12px;border:1px solid var(--ln);background:var(--pn);color:var(--tx);font-size:18px;font-weight:700}
+.dhud{display:flex;justify-content:space-between;font-size:17px;padding:2px 6px;direction:rtl}.dhud #dtm{direction:ltr}
+.drow{text-align:center;font-size:15px;letter-spacing:1px;min-height:20px;direction:ltr;word-break:break-all}.drow.big{font-size:24px;margin:8px 0}
+.dq{min-height:150px}.dq .qcat{color:var(--mu);font-size:13px;text-align:center}.dq .qtx{font-size:18px;font-weight:800;text-align:center;margin:6px 0 8px;line-height:1.5}
+.dbar{height:5px;background:var(--cell);border-radius:3px;overflow:hidden;margin-bottom:8px}.dbar i{display:block;height:100%;width:100%;background:var(--gold);transition:width .25s linear}
+.dst{text-align:center;color:var(--gold);font-size:15px;min-height:22px;margin:6px 0}
+.dwait{font-size:60px;text-align:center;line-height:150px}
+.dintro h3{margin:4px 0 8px;text-align:center}.dintro p{margin:6px 0;line-height:1.7;font-size:15px}
+.dstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.dstats div{background:var(--cell);border-radius:12px;padding:8px 2px;font-size:12px;color:var(--mu);text-align:center}.dstats b{display:block;font-size:20px;color:var(--tx)}
+#daily{max-width:480px;margin:0 auto;padding:0 10px 60px}
 #coach{position:fixed;z-index:12;background:#ffb21e;color:#231800;font-size:13px;font-weight:700;line-height:1.6;padding:10px 12px;border-radius:12px;box-shadow:0 8px 24px #000a;display:none;text-align:right}
 #coach.on{display:block;animation:cin .25s}@keyframes cin{from{opacity:0;transform:translateY(6px)}}
 #coach .ar{position:absolute;width:12px;height:12px;background:#ffb21e;transform:rotate(45deg)}
@@ -111,6 +124,10 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
 <div class="screen on" id="home">
   <h1>BEHIND ENEMY LINES</h1>
   <div class="sub">خلف خطوط العدو — اجرِ، فكّر، أو جازف</div>
+  <div class="card dcard">
+    <button class="btn" id="bdaily"></button>
+    <div class="legend" id="bdsub" style="text-align:center;margin:0"></div>
+  </div>
   <div class="card">
     <input id="hname" maxlength="16" placeholder="اسمك">
     <button class="btn red" id="bhost">إنشاء غرفة</button>
@@ -166,11 +183,13 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
   <div id="stage"></div>
 </div>
 
+<div class="screen" id="daily"></div>
 <div class="screen" id="end"><div class="card" id="endc"></div></div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 /*CORE-START*/
+var __MR=Math.random;Math.random=(function(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};})(20261123);
 var COLS=5,ROWS=7,START=[ROWS-1,2],RUN_MS=90000,SET_MS=5000,STUN_MS=1500,PT_ANSWER=2,PT_GAMBLE=1,PT_TRAP=1,PT_FINISH=5,MAX_PASS=3,OFFER_MS=12000,BOUNCE_MS=10000,XINTRO=7000,READY_MS=7000,ROUNDEND_MS=6000;
 var DIRS={l:[-1,-1],u:[-1,0],r:[-1,1]},DORDER=['l','u','r'];
 function rnd(n){return Math.floor(Math.random()*n);}
@@ -744,7 +763,7 @@ function buildEasy(){
   OLY.filter(function(o){return o[0]>=1960;}).forEach(function(o){B.push(['رياضة','أين أقيمت الألعاب الأولمبية الصيفية عام '+o[0]+'؟',[o[1]].concat(pick3(oc,o[1]))]);});
   var seen={},out=[];B.forEach(function(b){if(seen[b[1]])return;seen[b[1]]=1;var o=b[2].filter(function(x,i,a){return a.indexOf(x)===i;});if(o.length===4)out.push(b);});return out;
 }
-var EASY=buildEasy();
+var EASY=buildEasy();Math.random=__MR;
 var SEEN_E=(function(){try{return JSON.parse(localStorage.getItem('bel_seen_easy')||'{}')||{};}catch(e){return {};}})();
 var ECAT=[],ELAST=null;
 function makeEasyQ(id){
@@ -1224,7 +1243,7 @@ function cell(id,r,c){return document.querySelector('#'+id+' [data-r="'+r+'"][da
 function dirOf(pos,r,c){for(var d in DIRS)if(pos[0]+DIRS[d][0]===r&&pos[1]+DIRS[d][1]===c)return d;return null;}
 // paint: o={pos,cands,traps,safe,stun,go,picks}
 function paint(id,o){
-  var WL=(V&&V.R&&V.R.walls)||[];
+  var WL=o.walls||(V&&V.R&&V.R.walls)||[];
   Array.prototype.forEach.call(document.querySelectorAll('#'+id+' .c'),function(el){
     var r=+el.dataset.r,c=+el.dataset.c,cls='c',tx='';
     if(r===0){cls+=' fin';tx='🏁';}
@@ -1552,6 +1571,128 @@ function loop(){
   requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.addEventListener('beforeunload',function(e){if(isHost&&V&&V.phase!=='lobby'&&V.phase!=='end'){e.preventDefault();e.returnValue='';}});
+// ===== Daily Challenge: same board, traps and questions for everyone, once a day =====
+var DCAT={'علوم':'🔬 علوم','جغرافيا':'🌍 جغرافيا','تاريخ':'📜 تاريخ','رياضة':'⚽ رياضة','دين':'🕌 دين','أشياء رهيبة':'🤯 أشياء رهيبة','عامة':'💡 عامة'};
+var DPAT=[['E','رياضة'],['B','علوم'],['B','جغرافيا'],['E','عامة'],['B','تاريخ'],['B','رياضة'],['B','علوم'],['E','رياضة'],['B','دين'],['B','جغرافيا'],['B','أشياء رهيبة'],['B','تاريخ'],['E','عامة'],['B','علوم']];
+var DHEARTS=3,DQ_MS=25000;
+function mulb(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hstr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function dKey(d){d=d||new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function dNum(){var n=new Date(),a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),b=new Date(2026,10,23);return Math.round((a-b)/864e5)+1;}
+function dLeft(){var n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);var s=Math.max(0,Math.floor((m-n)/1000));return ('0'+Math.floor(s/3600)).slice(-2)+':'+('0'+Math.floor(s%3600/60)).slice(-2)+':'+('0'+s%60).slice(-2);}
+function dBuild(key){
+  var rng=mulb(hstr('bel-daily-'+key)),ri=function(n){return Math.floor(rng()*n);};
+  var walls=[];for(var r=1;r<=ROWS-2;r++){var n=ri(3),cols=[0,1,2,3,4],got=[];for(var i=4;i>0;i--){var j=ri(i+1),t=cols[i];cols[i]=cols[j];cols[j]=t;}
+    for(var k=0;k<cols.length&&got.length<n;k++){var c=cols[k];if(c===START[1]&&r===ROWS-2)continue;if(got.some(function(g){return Math.abs(g-c)<2;}))continue;got.push(c);}
+    got.forEach(function(c){walls.push(r+','+c);});}
+  var safe={};for(var rr=0;rr<ROWS;rr++)for(var cc=0;cc<COLS;cc++){var cs=candidates([rr,cc],walls);if(cs.length)safe[rr+','+cc]=cs[ri(cs.length)];}
+  var used={},qs=[];
+  for(var q=0;q<36;q++){var p=DPAT[q%DPAT.length],src=p[0]==='E'?EASY:BANK,pool=[];
+    for(var x=0;x<src.length;x++)if(src[x][0]===p[1]&&!used[src[x][1]])pool.push(x);
+    if(!pool.length)for(x=0;x<src.length;x++)if(!used[src[x][1]])pool.push(x);
+    var b=src[pool[ri(pool.length)]];used[b[1]]=1;var o=b[2].slice();for(var m=o.length-1;m>0;m--){var w=ri(m+1),tt=o[m];o[m]=o[w];o[w]=tt;}
+    qs.push({cat:DCAT[b[0]]||b[0],text:b[1],o:o,ans:o.indexOf(b[2][0])});}
+  return {walls:walls,safe:safe,qs:qs};
+}
+var DG=null,DT=null,DIV=null;
+function dSave(){lsSet('bel_daily',DG.st);}
+function dOpen(){
+  var key=dKey(),st=lsGet('bel_daily',null);
+  if(!st||st.key!==key)st={key:key,num:dNum(),pos:START.slice(),best:START[0],hearts:DHEARTS,score:0,row:[],k:0,qRes:null,pick:null,streak:0,t0:0,tq:0,done:false,win:false,time:0};
+  DG={st:st,b:dBuild(key)};show('daily');
+  $('#daily').innerHTML='<div class="dtop"><button class="dback" id="dback">→</button><div><b>تحدّي اليوم #'+st.num+'</b><small>اللوحة والفخاخ والأسئلة نفسها لكل الناس اليوم</small></div><button class="dback" id="dhelp">؟</button></div>'+
+   '<div class="dhud"><span id="dh"></span><span id="dsc"></span><span id="dtm"></span></div><div id="drow" class="drow"></div>'+
+   '<div class="card dq" id="dq"></div>'+boardHtml('db')+'<div id="dst" class="dst"></div><div id="dres"></div>';
+  $('#dback').onclick=function(){clearInterval(DIV);show('home');homeDaily();};
+  $('#dhelp').onclick=function(){dIntro(true);};
+  clearInterval(DIV);DIV=setInterval(dTick,250);
+  if(!st.done&&!st.t0)dIntro(false);else dRender();
+}
+function dIntro(again){
+  $('#dq').innerHTML='<div class="dintro"><h3>🗓️ كيف تلعب تحدّي اليوم؟</h3>'+
+   '<p>🏃 أوصل بطلك إلى خط النهاية 🏁. أمامه في كل خطوة حتى 3 مربعات، <b>واحد فقط آمن</b> والباقي فخاخ 🪤.</p>'+
+   '<p>🧠 أجب عن السؤال إجابةً صحيحة فيضيء لك المربع الآمن ✅ ← <b>+2</b>.</p>'+
+   '<p>🎲 أو جازف واضغط مربعاً مباشرة: إن نجوت ← <b>+1</b>.</p>'+
+   '<p>💥 الفخ يركلك صفاً للخلف ويأخذ قلباً ❤️. معك 3 قلوب فقط. 🍀 ثلاث مجازفات ناجحة متتالية = <b>+3</b>.</p>'+
+   '<p>⏱ لكل سؤال 25 ثانية. الفخاخ لا تتغير اليوم، فتذكّر أماكنها إن انكشفت لك.</p>'+
+   '<button class="btn red" id="dgo">'+(again?'متابعة':'ابدأ التحدي')+'</button></div>';
+  $('#dgo').onclick=function(){var st=DG.st;if(!st.t0&&!st.done){st.t0=Date.now();st.tq=Date.now();dSave();}dRender();};
+  paint('db',{pos:DG.st.pos,walls:DG.b.walls});
+}
+function dCands(){return candidates(DG.st.pos,DG.b.walls);}
+function dSafe(){return DG.b.safe[DG.st.pos[0]+','+DG.st.pos[1]];}
+function dRender(){
+  var st=DG.st,q=DG.b.qs[st.k%DG.b.qs.length];
+  var h='';for(var i=0;i<DHEARTS;i++)h+=i<st.hearts?'❤️':'🖤';$('#dh').textContent=h;
+  $('#dsc').innerHTML='⭐ <b>'+st.score+'</b>';
+  $('#drow').textContent=st.row.join('');
+  if(st.done){dResult();return;}
+  var cs=dCands(),known=st.qRes===true?dSafe():null;
+  $('#dq').innerHTML='<div class="qcat">'+q.cat+' • السؤال '+(st.k+1)+'</div><div class="qtx">'+esc(q.text)+'</div><div class="dbar"><i id="dqb"></i></div><div class="opts">'+
+    q.o.map(function(t,i){var c='';if(st.qRes!=null){if(i===q.ans)c='ok';else if(i===st.pick)c='no';}return '<button data-i="'+i+'" class="'+c+'"'+(st.qRes!=null?' disabled':'')+'>'+esc(t)+'</button>';}).join('')+'</div>';
+  Array.prototype.forEach.call(document.querySelectorAll('#dq .opts button'),function(b){b.onclick=function(){dAnswer(+b.dataset.i);};});
+  paint('db',{pos:st.pos,walls:DG.b.walls,cands:cs,safe:known,go:true});
+  Array.prototype.forEach.call(document.querySelectorAll('#db .c.cand'),function(el){el.onclick=function(){dMove(dirOf(st.pos,+el.dataset.r,+el.dataset.c));};});
+  $('#dst').innerHTML=st.qRes===true?'✅ أحسنت! اضغط المربع <b style="color:var(--green)">الأخضر</b>':st.qRes===false?'❌ إجابة خاطئة — لم يبق إلا أن <b>تجازف</b> 🎲':'🧠 أجب لتكشف الطريق الآمن، أو جازف الآن 🎲';
+}
+function dAnswer(i){var st=DG.st;if(st.done||st.qRes!=null)return;var q=DG.b.qs[st.k%DG.b.qs.length];
+  st.pick=i;st.qRes=(i===q.ans);sfx(st.qRes?'ok':'no');if(st.qRes)flash('#2ecc71');dSave();dRender();}
+function dMove(d){
+  var st=DG.st;if(st.done||!d||DG.busy)return;var cs=dCands();if(cs.indexOf(d)<0)return;
+  var from=st.pos.slice(),sd=dSafe(),np=[from[0]+DIRS[d][0],from[1]+DIRS[d][1]],gamble=st.qRes!==true;
+  var traps=cs.filter(function(x){return x!==sd;}),ev={from:from,traps:traps};
+  if(d!==sd){
+    st.hearts--;st.score=Math.max(0,st.score-1);st.streak=0;st.row.push('🟥');sfx('glose');flash('#ff4757');
+    var back=openPos([Math.min(ROWS-1,from[0]+1),from[1]],DG.b.walls);st.pos=back;pop('−1','#ff4757');
+    DG.busy=1;knockback('db',np,back);setTimeout(function(){revealTraps('db',ev);},350);
+  }else{
+    st.row.push(gamble?'🟨':'🟩');var gain=0;if(np[0]<st.best){gain=gamble?1:2;st.best=np[0];}
+    if(gamble){st.streak++;sfx('gwin');flash('#2ecc71');}else{st.streak=0;}
+    if(st.streak>=3){st.streak=0;gain+=3;setTimeout(function(){pop('🍀 +3','#ffb21e');},500);}
+    st.score+=gain;if(gain)pop('+'+gain,'#2ecc71');st.pos=np;placeHero('db',np);revealTraps('db',ev);DG.busy=1;
+  }
+  st.k++;st.qRes=null;st.pick=null;st.tq=Date.now();
+  if(st.pos[0]===0){st.done=true;st.win=true;st.score+=5+st.hearts*2;st.time=Date.now()-st.t0;}
+  else if(st.hearts<=0){st.done=true;st.win=false;st.time=Date.now()-st.t0;}
+  if(st.done)dStats();
+  dSave();paint('db',{pos:st.pos,walls:DG.b.walls,stun:d!==sd});$('#dst').textContent=d!==sd?'💥 فخ! ركلة للخلف وخسرت قلباً':'👣 نجوت!';
+  $('#dq').innerHTML='<div class="dwait">'+(d!==sd?'💥':'✨')+'</div>';
+  setTimeout(function(){DG.busy=0;if(st.done){setTimeout(function(){sfx(st.win?'xwin':'xlose');},150);}dRender();},d!==sd?1500:900);
+}
+function dTick(){
+  if(!DG||!$('#daily').classList.contains('on'))return;var st=DG.st;
+  if(st.done){var c=$('#dcount');if(c)c.textContent=dLeft();if(dKey()!==st.key){dOpen();}return;}
+  if(!st.t0)return;var el=Date.now()-st.t0;$('#dtm').textContent='⏱ '+fmtT(el);
+  var b=$('#dqb');if(b&&st.qRes==null&&!DG.busy){var left=Math.max(0,DQ_MS-(Date.now()-st.tq));b.style.width=(left/DQ_MS*100)+'%';b.style.background=left<6000?'var(--red)':'var(--gold)';
+    if(left<=0){st.pick=-1;st.qRes=false;sfx('no');dSave();dRender();}}
+}
+function fmtT(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
+function dStats(){var st=DG.st,S=lsGet('bel_dstats',{played:0,wins:0,streak:0,max:0,last:null,best:0});
+  if(S.lastPlayed===st.key)return;S.lastPlayed=st.key;S.played++;
+  if(st.win){S.wins++;var y=new Date();y.setDate(y.getDate()-1);S.streak=(S.last===dKey(y))?S.streak+1:1;S.last=st.key;S.max=Math.max(S.max,S.streak);S.best=Math.max(S.best||0,st.score);}
+  else S.streak=0;lsSet('bel_dstats',S);}
+function dShareText(){var st=DG.st,h='';for(var i=0;i<DHEARTS;i++)h+=i<st.hearts?'❤️':'🖤';
+  return 'خلف خطوط العدو 🏃 تحدّي اليوم #'+st.num+'\n'+(st.win?'🏁 وصلت':'💀 سقطت')+' • ⭐ '+st.score+' • ⏱ '+fmtT(st.time)+' • '+h+'\n'+st.row.join('')+'\nhttps://behind-enemy-lines.onrender.com';}
+function dResult(){
+  var st=DG.st,S=lsGet('bel_dstats',{played:0,wins:0,streak:0,max:0});
+  $('#dq').innerHTML='<div class="dintro" style="text-align:center"><div style="font-size:46px">'+(st.win?'🏆':'💀')+'</div><h3>'+(st.win?'وصلت خلف خطوط العدو!':'سقطت في الفخاخ هذه المرة')+'</h3>'+
+   '<div class="drow big">'+st.row.join('')+'</div>'+
+   '<div class="dstats"><div><b>'+st.score+'</b>نقاطك</div><div><b>'+fmtT(st.time)+'</b>الوقت</div><div><b>'+S.played+'</b>لعبت</div><div><b>'+(S.played?Math.round(S.wins/S.played*100):0)+'%</b>فوز</div><div><b>'+S.streak+'</b>🔥 السلسلة</div><div><b>'+S.max+'</b>أطول سلسلة</div></div>'+
+   '<button class="btn red" id="dshare">📤 شارك نتيجتك</button><div class="legend" style="text-align:center">التحدي القادم بعد <b id="dcount" style="direction:ltr;display:inline-block">'+dLeft()+'</b></div></div>';
+  $('#dshare').onclick=function(){var t=dShareText();
+    if(navigator.share){navigator.share({text:t}).catch(function(){});return;}
+    try{navigator.clipboard.writeText(t).then(function(){$('#dshare').textContent='✅ نُسخت النتيجة — الصقها لأصدقائك';});}catch(e){prompt('انسخ النتيجة:',t);}};
+  paint('db',{pos:st.pos,walls:DG.b.walls});
+  $('#dst').textContent=st.win?'🎉 شارك المربعات الملونة وتحدَّ أصدقاءك على اللوحة نفسها':'غداً لوحة جديدة وفخاخ جديدة 🪤';
+}
+function homeDaily(){
+  var b=$('#bdaily');if(!b)return;var st=lsGet('bel_daily',null),S=lsGet('bel_dstats',{streak:0}),done=st&&st.key===dKey()&&st.done;
+  b.innerHTML='🗓️ تحدّي اليوم #'+dNum()+(done?' — ✅ '+(st.win?'أنهيته':'انتهى'):'');
+  $('#bdsub').innerHTML=done?'⭐ '+st.score+' • '+st.row.join('')+'<br>التحدي القادم بعد <span id="hcount" style="direction:ltr;display:inline-block">'+dLeft()+'</span>':
+   'لوحة واحدة وفخاخ واحدة لكل الناس اليوم — محاولة واحدة فقط، ثم شارك نتيجتك'+(S.streak?' • 🔥 سلسلتك '+S.streak:'');
+}
+$('#bdaily').onclick=dOpen;homeDaily();setInterval(function(){var c=$('#hcount');if(c&&$('#home').classList.contains('on'))c.textContent=dLeft();},1000);
+
 </script>
 </body>
 </html>
