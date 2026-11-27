@@ -180,6 +180,7 @@ canvas{display:block;margin:6px auto;background:#12162a;border-radius:14px;touch
     <p class="legend" style="text-align:center;margin:0">جولتان قصيرتان ضد المدرّب 🤖 مع تلميحات تشرح كل شيء — لا يحتاج إنترنت ولا أصدقاء</p>
     <button class="btn" id="btips" style="font-size:14px;padding:10px"></button>
     <button class="btn" id="bsnd" style="font-size:14px;padding:10px"></button>
+    <button class="btn" id="blang" style="font-size:14px;padding:10px"></button>
   </div>
   <div class="card"><b style="font-size:17px">🪤 أنواع الفخاخ</b><div id="tgHome"></div></div>
   <div class="card legend" style="font-size:15px;line-height:1.9">
@@ -1311,22 +1312,507 @@ var BAL_E=EASY,BAL_M=MID,BAL_H=(function(){var mt={},ez={};MID.forEach(function(
     if((m=t.match(/رمزه الكيميائي (\w+)/))&&(ez[m[1]]||99)>56)return false;
     if((m=t.match(/^ما الرمز الكيميائي لعنصر (.+)؟$/))&&(ez[m[1]]||99)>56)return false;
     return true;});})();
-var BAL_POOL=[null,BAL_E,BAL_M,BAL_H];
+// name~en | capital~en | continent | currency~en | language~en | area (1000 km2) | population (millions) | tier
+var KB_COUNTRIES=[
+'السعودية~Saudi Arabia|الرياض~Riyadh|AS|الريال السعودي~Saudi riyal|العربية~Arabic|2150|33|1',
+'مصر~Egypt|القاهرة~Cairo|AF|الجنيه المصري~Egyptian pound|العربية~Arabic|1002|107|1',
+'الإمارات~United Arab Emirates|أبوظبي~Abu Dhabi|AS|الدرهم الإماراتي~UAE dirham|العربية~Arabic|84|10|1',
+'الكويت~Kuwait|مدينة الكويت~Kuwait City|AS|الدينار الكويتي~Kuwaiti dinar|العربية~Arabic|17.8|4.3|1',
+'قطر~Qatar|الدوحة~Doha|AS|الريال القطري~Qatari riyal|العربية~Arabic|11.6|2.7|1',
+'البحرين~Bahrain|المنامة~Manama|AS|الدينار البحريني~Bahraini dinar|العربية~Arabic|0.78|1.5|1',
+'عُمان~Oman|مسقط~Muscat|AS|الريال العُماني~Omani rial|العربية~Arabic|310|4.6|1',
+'اليمن~Yemen|صنعاء~Sanaa|AS|الريال اليمني~Yemeni rial|العربية~Arabic|528|34|1',
+'العراق~Iraq|بغداد~Baghdad|AS|الدينار العراقي~Iraqi dinar|العربية~Arabic|438|45|1',
+'الأردن~Jordan|عمّان~Amman|AS|الدينار الأردني~Jordanian dinar|العربية~Arabic|89|11|1',
+'سوريا~Syria|دمشق~Damascus|AS|الليرة السورية~Syrian pound|العربية~Arabic|185|23|1',
+'لبنان~Lebanon|بيروت~Beirut|AS|الليرة اللبنانية~Lebanese pound|العربية~Arabic|10.4|5.5|1',
+'ليبيا~Libya|طرابلس~Tripoli|AF|الدينار الليبي~Libyan dinar|العربية~Arabic|1760|7|1',
+'تونس~Tunisia|تونس~Tunis|AF|الدينار التونسي~Tunisian dinar|العربية~Arabic|164|12|1',
+'الجزائر~Algeria|الجزائر~Algiers|AF|الدينار الجزائري~Algerian dinar|العربية~Arabic|2382|46|1',
+'المغرب~Morocco|الرباط~Rabat|AF|الدرهم المغربي~Moroccan dirham|العربية~Arabic|447|37|1',
+'موريتانيا~Mauritania|نواكشوط~Nouakchott|AF|الأوقية~ouguiya|العربية~Arabic|1031|4.9|2',
+'السودان~Sudan|الخرطوم~Khartoum|AF|الجنيه السوداني~Sudanese pound|العربية~Arabic|1886|48|1',
+'الصومال~Somalia|مقديشو~Mogadishu|AF|الشلن الصومالي~Somali shilling||638|18|2',
+'جيبوتي~Djibouti|جيبوتي~Djibouti|AF|الفرنك الجيبوتي~Djiboutian franc||23|1.1|2',
+'جزر القمر~Comoros|موروني~Moroni|AF|الفرنك القمري~Comorian franc||1.86|0.85|3',
+'تركيا~Turkey|أنقرة~Ankara|AS|الليرة التركية~Turkish lira|التركية~Turkish|784|85|1',
+'إيران~Iran|طهران~Tehran|AS|الريال الإيراني~Iranian rial|الفارسية~Persian|1648|89|1',
+'أفغانستان~Afghanistan|كابل~Kabul|AS|الأفغاني~afghani||652|42|1',
+'باكستان~Pakistan|إسلام آباد~Islamabad|AS|الروبية الباكستانية~Pakistani rupee|الأردية~Urdu|882|240|1',
+'الهند~India|نيودلهي~New Delhi|AS|الروبية الهندية~Indian rupee|الهندية~Hindi|3287|1430|1',
+'بنغلاديش~Bangladesh|دكا~Dhaka|AS|التاكا~taka|البنغالية~Bengali|148|173|1',
+'سريلانكا~Sri Lanka||AS|الروبية السريلانكية~Sri Lankan rupee||65.6|22|2',
+'نيبال~Nepal|كاتماندو~Kathmandu|AS|الروبية النيبالية~Nepalese rupee|النيبالية~Nepali|147|30|2',
+'الصين~China|بكين~Beijing|AS|اليوان~yuan|الصينية~Chinese|9597|1410|1',
+'اليابان~Japan|طوكيو~Tokyo|AS|الين~yen|اليابانية~Japanese|378|124|1',
+'كوريا الجنوبية~South Korea|سيول~Seoul|AS|الوون الكوري الجنوبي~South Korean won|الكورية~Korean|100|52|1',
+'كوريا الشمالية~North Korea|بيونغ يانغ~Pyongyang|AS|الوون الكوري الشمالي~North Korean won|الكورية~Korean|121|26|2',
+'منغوليا~Mongolia|أولان باتور~Ulaanbaatar|AS|التوغروغ~tögrög|المنغولية~Mongolian|1564|3.4|2',
+'إندونيسيا~Indonesia||AS|الروبية الإندونيسية~Indonesian rupiah|الإندونيسية~Indonesian|1905|278|1',
+'ماليزيا~Malaysia|كوالالمبور~Kuala Lumpur|AS|الرينغيت~ringgit|الملايوية~Malay|330|34|1',
+'سنغافورة~Singapore|سنغافورة~Singapore|AS|الدولار السنغافوري~Singapore dollar||0.73|6|1',
+'تايلاند~Thailand|بانكوك~Bangkok|AS|البات~baht|التايلاندية~Thai|513|71|1',
+'فيتنام~Vietnam|هانوي~Hanoi|AS|الدونغ~dong|الفيتنامية~Vietnamese|331|100|1',
+'الفلبين~Philippines|مانيلا~Manila|AS|البيزو الفلبيني~Philippine peso||300|114|1',
+'كمبوديا~Cambodia|بنوم بنه~Phnom Penh|AS|الرييل~riel|الخميرية~Khmer|181|17|2',
+'لاوس~Laos|فيينتيان~Vientiane|AS|الكيب~kip|اللاوية~Lao|237|7.5|3',
+'ميانمار~Myanmar|نايبيداو~Naypyidaw|AS|الكيات~kyat|البورمية~Burmese|677|54|3',
+'كازاخستان~Kazakhstan|أستانا~Astana|AS|التينغ~tenge|الكازاخية~Kazakh|2725|20|2',
+'أوزبكستان~Uzbekistan|طشقند~Tashkent|AS|السوم الأوزبكي~Uzbek som|الأوزبكية~Uzbek|449|36|2',
+'تركمانستان~Turkmenistan|عشق آباد~Ashgabat|AS|المانات التركمانستاني~Turkmen manat|التركمانية~Turkmen|488|6.5|3',
+'قيرغيزستان~Kyrgyzstan|بيشكك~Bishkek|AS|السوم القيرغيزي~Kyrgyz som||200|7|3',
+'طاجيكستان~Tajikistan|دوشنبه~Dushanbe|AS|الساماني~somoni|الطاجيكية~Tajik|141|10|3',
+'أذربيجان~Azerbaijan|باكو~Baku|AS|المانات الأذربيجاني~Azerbaijani manat|الأذربيجانية~Azerbaijani|87|10|2',
+'جورجيا~Georgia|تبليسي~Tbilisi|AS|اللاري~lari|الجورجية~Georgian|70|3.7|2',
+'أرمينيا~Armenia|يريفان~Yerevan|AS|الدرام~dram|الأرمنية~Armenian|30|3|2',
+'بريطانيا~United Kingdom|لندن~London|EU|الجنيه الإسترليني~pound sterling|الإنجليزية~English|244|68|1',
+'فرنسا~France|باريس~Paris|EU|اليورو~euro|الفرنسية~French|552|68|1',
+'ألمانيا~Germany|برلين~Berlin|EU|اليورو~euro|الألمانية~German|357|84|1',
+'إيطاليا~Italy|روما~Rome|EU|اليورو~euro|الإيطالية~Italian|301|59|1',
+'إسبانيا~Spain|مدريد~Madrid|EU|اليورو~euro|الإسبانية~Spanish|506|48|1',
+'البرتغال~Portugal|لشبونة~Lisbon|EU|اليورو~euro|البرتغالية~Portuguese|92|10.4|1',
+'هولندا~Netherlands|أمستردام~Amsterdam|EU|اليورو~euro|الهولندية~Dutch|41.5|17.9|1',
+'بلجيكا~Belgium|بروكسل~Brussels|EU|اليورو~euro||30.7|11.8|1',
+'سويسرا~Switzerland|برن~Bern|EU|الفرنك السويسري~Swiss franc||41.3|8.8|1',
+'النمسا~Austria|فيينا~Vienna|EU|اليورو~euro|الألمانية~German|83.9|9.1|1',
+'بولندا~Poland|وارسو~Warsaw|EU|الزلوتي~złoty|البولندية~Polish|313|37|1',
+'التشيك~Czech Republic|براغ~Prague|EU|الكرونة التشيكية~Czech koruna|التشيكية~Czech|78.9|10.9|2',
+'المجر~Hungary|بودابست~Budapest|EU|الفورنت~forint|المجرية~Hungarian|93|9.6|2',
+'رومانيا~Romania|بوخارست~Bucharest|EU|الليو الروماني~Romanian leu|الرومانية~Romanian|238|19|2',
+'بلغاريا~Bulgaria|صوفيا~Sofia|EU||البلغارية~Bulgarian|111|6.4|2',
+'اليونان~Greece|أثينا~Athens|EU|اليورو~euro|اليونانية~Greek|132|10.4|1',
+'السويد~Sweden|ستوكهولم~Stockholm|EU|الكرونة السويدية~Swedish krona|السويدية~Swedish|450|10.5|1',
+'النرويج~Norway|أوسلو~Oslo|EU|الكرونة النرويجية~Norwegian krone|النرويجية~Norwegian|324|5.5|1',
+'الدنمارك~Denmark|كوبنهاغن~Copenhagen|EU|الكرونة الدنماركية~Danish krone|الدنماركية~Danish|43|5.9|1',
+'فنلندا~Finland|هلسنكي~Helsinki|EU|اليورو~euro|الفنلندية~Finnish|338|5.6|1',
+'آيسلندا~Iceland|ريكيافيك~Reykjavík|EU|الكرونة الآيسلندية~Icelandic króna|الآيسلندية~Icelandic|103|0.38|2',
+'أيرلندا~Ireland|دبلن~Dublin|EU|اليورو~euro||70|5.2|1',
+'روسيا~Russia|موسكو~Moscow|EU|الروبل~ruble|الروسية~Russian|17098|146|1',
+'أوكرانيا~Ukraine|كييف~Kyiv|EU|الهريفنيا~hryvnia|الأوكرانية~Ukrainian|604|37|1',
+'بيلاروسيا~Belarus|مينسك~Minsk|EU|الروبل البيلاروسي~Belarusian ruble||208|9.2|2',
+'صربيا~Serbia|بلغراد~Belgrade|EU|الدينار الصربي~Serbian dinar|الصربية~Serbian|77.5|6.6|2',
+'كرواتيا~Croatia|زغرب~Zagreb|EU|اليورو~euro|الكرواتية~Croatian|56.6|3.9|2',
+'البوسنة والهرسك~Bosnia and Herzegovina|سراييفو~Sarajevo|EU|المارك البوسني~convertible mark||51|3.2|2',
+'ألبانيا~Albania|تيرانا~Tirana|EU|الليك~lek|الألبانية~Albanian|28.7|2.8|2',
+'سلوفاكيا~Slovakia|براتيسلافا~Bratislava|EU|اليورو~euro|السلوفاكية~Slovak|49|5.4|3',
+'سلوفينيا~Slovenia|ليوبليانا~Ljubljana|EU|اليورو~euro|السلوفينية~Slovene|20.3|2.1|3',
+'إستونيا~Estonia|تالين~Tallinn|EU|اليورو~euro|الإستونية~Estonian|45|1.4|3',
+'لاتفيا~Latvia|ريغا~Riga|EU|اليورو~euro|اللاتفية~Latvian|64.6|1.9|3',
+'ليتوانيا~Lithuania|فيلنيوس~Vilnius|EU|اليورو~euro|الليتوانية~Lithuanian|65.3|2.9|3',
+'مالطا~Malta|فاليتا~Valletta|EU|اليورو~euro||0.32|0.55|2',
+'لوكسمبورغ~Luxembourg|لوكسمبورغ~Luxembourg|EU|اليورو~euro||2.6|0.67|2',
+'قبرص~Cyprus|نيقوسيا~Nicosia|EU|اليورو~euro||9.25|1.3|2',
+'نيجيريا~Nigeria|أبوجا~Abuja|AF|النيرة~naira||924|223|1',
+'إثيوبيا~Ethiopia|أديس أبابا~Addis Ababa|AF|البير~birr|الأمهرية~Amharic|1104|126|1',
+'كينيا~Kenya|نيروبي~Nairobi|AF|الشلن الكيني~Kenyan shilling||580|55|1',
+'تنزانيا~Tanzania|دودوما~Dodoma|AF|الشلن التنزاني~Tanzanian shilling||945|67|2',
+'أوغندا~Uganda|كمبالا~Kampala|AF|الشلن الأوغندي~Ugandan shilling||241|48|2',
+'رواندا~Rwanda|كيغالي~Kigali|AF|الفرنك الرواندي~Rwandan franc||26|14|2',
+'جنوب أفريقيا~South Africa||AF|الراند~rand||1221|62|1',
+'غانا~Ghana|أكرا~Accra|AF|السيدي~cedi||239|34|2',
+'السنغال~Senegal|داكار~Dakar|AF|||197|18|2',
+'ساحل العاج~Ivory Coast|ياموسوكرو~Yamoussoukro|AF|||322|29|3',
+'الكاميرون~Cameroon|ياوندي~Yaoundé|AF|||475|28|2',
+'الكونغو الديمقراطية~DR Congo|كينشاسا~Kinshasa|AF|الفرنك الكونغولي~Congolese franc||2345|102|2',
+'أنغولا~Angola|لواندا~Luanda|AF|الكوانزا~kwanza|البرتغالية~Portuguese|1247|36|2',
+'موزمبيق~Mozambique|مابوتو~Maputo|AF|الميتيكال~metical|البرتغالية~Portuguese|802|33|2',
+'زامبيا~Zambia|لوساكا~Lusaka|AF|الكواشا الزامبية~Zambian kwacha||753|20|3',
+'زيمبابوي~Zimbabwe|هراري~Harare|AF|||391|16|2',
+'مدغشقر~Madagascar|أنتاناناريفو~Antananarivo|AF|الأرياري~ariary||587|30|2',
+'ناميبيا~Namibia|ويندهوك~Windhoek|AF|||825|2.6|3',
+'بوتسوانا~Botswana|غابورون~Gaborone|AF|البولا~pula||582|2.6|3',
+'مالي~Mali|باماكو~Bamako|AF|||1240|23|3',
+'النيجر~Niger|نيامي~Niamey|AF|||1267|27|3',
+'تشاد~Chad|إنجامينا~N’Djamena|AF|||1284|18|3',
+'إريتريا~Eritrea|أسمرة~Asmara|AF|الناكفا~nakfa||117|3.7|3',
+'الولايات المتحدة~United States|واشنطن~Washington, D.C.|NA|الدولار الأمريكي~US dollar||9834|335|1',
+'كندا~Canada|أوتاوا~Ottawa|NA|الدولار الكندي~Canadian dollar||9985|40|1',
+'المكسيك~Mexico|مكسيكو سيتي~Mexico City|NA|البيزو المكسيكي~Mexican peso|الإسبانية~Spanish|1964|129|1',
+'كوبا~Cuba|هافانا~Havana|NA|البيزو الكوبي~Cuban peso|الإسبانية~Spanish|110|11|1',
+'جامايكا~Jamaica|كينغستون~Kingston|NA|الدولار الجامايكي~Jamaican dollar|الإنجليزية~English|11|2.8|2',
+'بنما~Panama|بنما~Panama City|NA|البالبوا~balboa|الإسبانية~Spanish|75|4.4|2',
+'كوستاريكا~Costa Rica|سان خوسيه~San José|NA|الكولون~colón|الإسبانية~Spanish|51|5.2|2',
+'غواتيمالا~Guatemala|غواتيمالا~Guatemala City|NA|الكتزال~quetzal|الإسبانية~Spanish|109|18|3',
+'هايتي~Haiti|بورت أو برنس~Port-au-Prince|NA|الغورد~gourde||27.8|11.7|3',
+'البرازيل~Brazil|برازيليا~Brasília|SA|الريال البرازيلي~Brazilian real|البرتغالية~Portuguese|8516|216|1',
+'الأرجنتين~Argentina|بوينس آيرس~Buenos Aires|SA|البيزو الأرجنتيني~Argentine peso|الإسبانية~Spanish|2780|46|1',
+'تشيلي~Chile|سانتياغو~Santiago|SA|البيزو التشيلي~Chilean peso|الإسبانية~Spanish|756|19.6|1',
+'بيرو~Peru|ليما~Lima|SA|السول~sol||1285|34|1',
+'كولومبيا~Colombia|بوغوتا~Bogotá|SA|البيزو الكولومبي~Colombian peso|الإسبانية~Spanish|1142|52|1',
+'فنزويلا~Venezuela|كاراكاس~Caracas|SA|البوليفار~bolívar|الإسبانية~Spanish|916|28|1',
+'الإكوادور~Ecuador|كيتو~Quito|SA||الإسبانية~Spanish|256|18|2',
+'بوليفيا~Bolivia||SA|البوليفيانو~boliviano||1099|12|2',
+'باراغواي~Paraguay|أسونسيون~Asunción|SA|الغواراني~guaraní||407|6.9|2',
+'الأوروغواي~Uruguay|مونتيفيديو~Montevideo|SA|البيزو الأوروغواياني~Uruguayan peso|الإسبانية~Spanish|176|3.4|2',
+'أستراليا~Australia|كانبرا~Canberra|OC|الدولار الأسترالي~Australian dollar||7692|27|1',
+'نيوزيلندا~New Zealand|ويلينغتون~Wellington|OC|الدولار النيوزيلندي~New Zealand dollar||268|5.2|1',
+'فيجي~Fiji|سوفا~Suva|OC|الدولار الفيجي~Fijian dollar||18.3|0.93|3',
+'بابوا غينيا الجديدة~Papua New Guinea|بورت مورسبي~Port Moresby|OC|الكينا~kina||463|10|3'
+];
+// city~en | country (English name from KB_COUNTRIES) | tier
+var KB_CITIES=[
+'جدة~Jeddah|Saudi Arabia|1','مكة المكرمة~Mecca|Saudi Arabia|1','المدينة المنورة~Medina|Saudi Arabia|1','الدمام~Dammam|Saudi Arabia|1','أبها~Abha|Saudi Arabia|1','تبوك~Tabuk|Saudi Arabia|1','نجران~Najran|Saudi Arabia|1','الطائف~Taif|Saudi Arabia|1','العُلا~AlUla|Saudi Arabia|2',
+'الإسكندرية~Alexandria|Egypt|1','الأقصر~Luxor|Egypt|1','أسوان~Aswan|Egypt|1','بورسعيد~Port Said|Egypt|2','شرم الشيخ~Sharm El Sheikh|Egypt|1','الغردقة~Hurghada|Egypt|2',
+'دبي~Dubai|United Arab Emirates|1','الشارقة~Sharjah|United Arab Emirates|1','العين~Al Ain|United Arab Emirates|2','رأس الخيمة~Ras Al Khaimah|United Arab Emirates|2',
+'صلالة~Salalah|Oman|2','نزوى~Nizwa|Oman|2','عدن~Aden|Yemen|1','تعز~Taiz|Yemen|2','المكلا~Mukalla|Yemen|3',
+'البصرة~Basra|Iraq|1','الموصل~Mosul|Iraq|1','أربيل~Erbil|Iraq|2','النجف~Najaf|Iraq|2','كربلاء~Karbala|Iraq|2',
+'العقبة~Aqaba|Jordan|1','إربد~Irbid|Jordan|2','الزرقاء~Zarqa|Jordan|2','حلب~Aleppo|Syria|1','حمص~Homs|Syria|2','اللاذقية~Latakia|Syria|2','طرابلس اللبنانية~Tripoli (Lebanon)|Lebanon|2','صيدا~Sidon|Lebanon|2','بعلبك~Baalbek|Lebanon|2',
+'بنغازي~Benghazi|Libya|1','مصراتة~Misrata|Libya|2','صفاقس~Sfax|Tunisia|2','سوسة~Sousse|Tunisia|2','القيروان~Kairouan|Tunisia|2','وهران~Oran|Algeria|1','قسنطينة~Constantine|Algeria|2','عنابة~Annaba|Algeria|2',
+'الدار البيضاء~Casablanca|Morocco|1','مراكش~Marrakesh|Morocco|1','فاس~Fez|Morocco|1','طنجة~Tangier|Morocco|1','أغادير~Agadir|Morocco|2','بورتسودان~Port Sudan|Sudan|2','أم درمان~Omdurman|Sudan|2',
+'إسطنبول~Istanbul|Turkey|1','إزمير~Izmir|Turkey|2','أنطاليا~Antalya|Turkey|1','بورصة~Bursa|Turkey|2','طرابزون~Trabzon|Turkey|2','قونية~Konya|Turkey|2',
+'أصفهان~Isfahan|Iran|2','شيراز~Shiraz|Iran|2','مشهد~Mashhad|Iran|2','تبريز~Tabriz|Iran|2','قندهار~Kandahar|Afghanistan|2','هرات~Herat|Afghanistan|2',
+'كراتشي~Karachi|Pakistan|1','لاهور~Lahore|Pakistan|1','بيشاور~Peshawar|Pakistan|2','مومباي~Mumbai|India|1','كولكاتا~Kolkata|India|1','بنغالور~Bengaluru|India|2','حيدر آباد~Hyderabad|India|2','تشيناي~Chennai|India|2','أغرا~Agra|India|1','جايبور~Jaipur|India|2','شيتاغونغ~Chittagong|Bangladesh|2','كولومبو~Colombo|Sri Lanka|2','كاندي~Kandy|Sri Lanka|3',
+'شنغهاي~Shanghai|China|1','هونغ كونغ~Hong Kong|China|1','قوانغتشو~Guangzhou|China|2','شنتشن~Shenzhen|China|2','ووهان~Wuhan|China|2','شيان~Xi’an|China|2','تشونغتشينغ~Chongqing|China|2',
+'أوساكا~Osaka|Japan|1','كيوتو~Kyoto|Japan|1','هيروشيما~Hiroshima|Japan|1','ناغازاكي~Nagasaki|Japan|2','يوكوهاما~Yokohama|Japan|2','سابورو~Sapporo|Japan|2','بوسان~Busan|South Korea|1','إنتشون~Incheon|South Korea|2',
+'سورابايا~Surabaya|Indonesia|2','باندونغ~Bandung|Indonesia|2','بالي (دينباسار)~Denpasar|Indonesia|2','بينانغ~Penang|Malaysia|2','جوهور باهرو~Johor Bahru|Malaysia|2','شيانغ ماي~Chiang Mai|Thailand|2','بوكيت~Phuket|Thailand|1','هو تشي منه~Ho Chi Minh City|Vietnam|1','دا نانغ~Da Nang|Vietnam|2','سيبو~Cebu|Philippines|2','دافاو~Davao|Philippines|3','سيام ريب~Siem Reap|Cambodia|2','يانغون~Yangon|Myanmar|2',
+'ألماتي~Almaty|Kazakhstan|1','سمرقند~Samarkand|Uzbekistan|1','بخارى~Bukhara|Uzbekistan|1','خيوة~Khiva|Uzbekistan|3','باتومي~Batumi|Georgia|2',
+'مانشستر~Manchester|United Kingdom|1','ليفربول~Liverpool|United Kingdom|1','برمنغهام~Birmingham|United Kingdom|1','إدنبرة~Edinburgh|United Kingdom|1','غلاسكو~Glasgow|United Kingdom|1','أكسفورد~Oxford|United Kingdom|1','كامبريدج~Cambridge|United Kingdom|1','كارديف~Cardiff|United Kingdom|2','بلفاست~Belfast|United Kingdom|2','ليدز~Leeds|United Kingdom|2',
+'مرسيليا~Marseille|France|1','ليون~Lyon|France|1','نيس~Nice|France|1','بوردو~Bordeaux|France|1','تولوز~Toulouse|France|2','ستراسبورغ~Strasbourg|France|2','ليل~Lille|France|2','نانت~Nantes|France|2','كان~Cannes|France|1',
+'ميونخ~Munich|Germany|1','هامبورغ~Hamburg|Germany|1','فرانكفورت~Frankfurt|Germany|1','كولونيا~Cologne|Germany|1','شتوتغارت~Stuttgart|Germany|2','دورتموند~Dortmund|Germany|1','دوسلدورف~Düsseldorf|Germany|2','لايبزيغ~Leipzig|Germany|2','دريسدن~Dresden|Germany|2','بريمن~Bremen|Germany|2','هانوفر~Hanover|Germany|2','نورنبرغ~Nuremberg|Germany|2',
+'ميلانو~Milan|Italy|1','نابولي~Naples|Italy|1','تورينو~Turin|Italy|1','فلورنسا~Florence|Italy|1','البندقية~Venice|Italy|1','بولونيا~Bologna|Italy|2','جنوة~Genoa|Italy|2','باليرمو~Palermo|Italy|2','بيزا~Pisa|Italy|1','فيرونا~Verona|Italy|2',
+'برشلونة~Barcelona|Spain|1','فالنسيا~Valencia|Spain|1','إشبيلية~Seville|Spain|1','غرناطة~Granada|Spain|1','قرطبة~Córdoba|Spain|1','مالقة~Málaga|Spain|1','بلباو~Bilbao|Spain|2','سرقسطة~Zaragoza|Spain|2','طليطلة~Toledo|Spain|2','سانتياغو دي كومبوستيلا~Santiago de Compostela|Spain|3',
+'بورتو~Porto|Portugal|1','فارو~Faro|Portugal|2','براغا~Braga|Portugal|2','روتردام~Rotterdam|Netherlands|1','لاهاي~The Hague|Netherlands|1','أوترخت~Utrecht|Netherlands|2','أيندهوفن~Eindhoven|Netherlands|2','أنتويرب~Antwerp|Belgium|1','بروج~Bruges|Belgium|2','غنت~Ghent|Belgium|2','لييج~Liège|Belgium|2',
+'زيورخ~Zurich|Switzerland|1','جنيف~Geneva|Switzerland|1','بازل~Basel|Switzerland|1','لوزان~Lausanne|Switzerland|2','لوسيرن~Lucerne|Switzerland|2','سالزبورغ~Salzburg|Austria|1','إنسبروك~Innsbruck|Austria|2','غراتس~Graz|Austria|2',
+'كراكوف~Kraków|Poland|1','غدانسك~Gdańsk|Poland|2','فروتسواف~Wrocław|Poland|2','برنو~Brno|Czech Republic|2','ديبريسين~Debrecen|Hungary|3','كلوج نابوكا~Cluj-Napoca|Romania|3','سالونيك~Thessaloniki|Greece|1','هيراكليون~Heraklion|Greece|2',
+'غوتنبرغ~Gothenburg|Sweden|1','مالمو~Malmö|Sweden|2','بيرغن~Bergen|Norway|2','آرهوس~Aarhus|Denmark|2','توركو~Turku|Finland|3','كورك~Cork|Ireland|2',
+'سانت بطرسبرغ~Saint Petersburg|Russia|1','قازان~Kazan|Russia|2','سوتشي~Sochi|Russia|1','فلاديفوستوك~Vladivostok|Russia|2','نوفوسيبيرسك~Novosibirsk|Russia|2','أوديسا~Odesa|Ukraine|1','خاركيف~Kharkiv|Ukraine|2','لفيف~Lviv|Ukraine|2',
+'سبليت~Split|Croatia|2','دوبروفنيك~Dubrovnik|Croatia|2','موستار~Mostar|Bosnia and Herzegovina|2',
+'لاغوس~Lagos|Nigeria|1','كانو~Kano|Nigeria|2','ممباسا~Mombasa|Kenya|2','دار السلام~Dar es Salaam|Tanzania|1','زنجبار~Zanzibar City|Tanzania|1','كيب تاون~Cape Town|South Africa|1','جوهانسبرغ~Johannesburg|South Africa|1','ديربان~Durban|South Africa|2','بريتوريا~Pretoria|South Africa|2','أبيدجان~Abidjan|Ivory Coast|2','دوالا~Douala|Cameroon|3','تمبكتو~Timbuktu|Mali|2',
+'نيويورك~New York City|United States|1','لوس أنجلوس~Los Angeles|United States|1','شيكاغو~Chicago|United States|1','سان فرانسيسكو~San Francisco|United States|1','ميامي~Miami|United States|1','لاس فيغاس~Las Vegas|United States|1','بوسطن~Boston|United States|1','سياتل~Seattle|United States|1','هيوستن~Houston|United States|1','نيو أورليانز~New Orleans|United States|2','دالاس~Dallas|United States|1','أتلانتا~Atlanta|United States|2','فيلادلفيا~Philadelphia|United States|2','ديترويت~Detroit|United States|2','دنفر~Denver|United States|2','أورلاندو~Orlando|United States|2','هونولولو~Honolulu|United States|2',
+'تورونتو~Toronto|Canada|1','مونتريال~Montreal|Canada|1','فانكوفر~Vancouver|Canada|1','كالغاري~Calgary|Canada|2','كيبيك~Quebec City|Canada|2','إدمونتون~Edmonton|Canada|2',
+'غوادالاخارا~Guadalajara|Mexico|2','كانكون~Cancún|Mexico|1','مونتيري~Monterrey|Mexico|2','أكابولكو~Acapulco|Mexico|2',
+'ريو دي جانيرو~Rio de Janeiro|Brazil|1','ساو باولو~São Paulo|Brazil|1','سلفادور~Salvador|Brazil|2','ماناوس~Manaus|Brazil|2','فورتاليزا~Fortaleza|Brazil|3','بيلو هوريزونتي~Belo Horizonte|Brazil|2','ريسيفي~Recife|Brazil|3',
+'قرطبة الأرجنتينية~Córdoba (Argentina)|Argentina|3','روساريو~Rosario|Argentina|2','مندوزا~Mendoza|Argentina|2','أوشوايا~Ushuaia|Argentina|2','فالبارايسو~Valparaíso|Chile|2','كوسكو~Cusco|Peru|1','أريكيبا~Arequipa|Peru|3','ميديين~Medellín|Colombia|1','كالي~Cali|Colombia|2','قرطاجنة الكولومبية~Cartagena|Colombia|2','غواياكيل~Guayaquil|Ecuador|2','لاباز~La Paz|Bolivia|2','سانتا كروز~Santa Cruz de la Sierra|Bolivia|3','ماراكايبو~Maracaibo|Venezuela|3',
+'سيدني~Sydney|Australia|1','ملبورن~Melbourne|Australia|1','بريزبين~Brisbane|Australia|1','بيرث~Perth|Australia|1','أديلايد~Adelaide|Australia|2','داروين~Darwin|Australia|2','هوبارت~Hobart|Australia|3','أوكلاند~Auckland|New Zealand|1','كرايستشيرش~Christchurch|New Zealand|2','كوينزتاون~Queenstown|New Zealand|2'
+];
+
+// landmark~en | city~en | country (English) | tier
+var KB_LANDMARKS=[
+'برج إيفل~the Eiffel Tower|باريس~Paris|France|1','متحف اللوفر~the Louvre|باريس~Paris|France|1','قوس النصر~the Arc de Triomphe|باريس~Paris|France|1','قصر فرساي~the Palace of Versailles|فرساي~Versailles|France|1','دير جبل سان ميشيل~Mont-Saint-Michel|نورماندي~Normandy|France|2',
+'الكولوسيوم~the Colosseum|روما~Rome|Italy|1','برج بيزا المائل~the Leaning Tower of Pisa|بيزا~Pisa|Italy|1','نافورة تريفي~the Trevi Fountain|روما~Rome|Italy|1','كاتدرائية ميلانو~Milan Cathedral|ميلانو~Milan|Italy|2','أطلال بومبي~Pompeii|نابولي~Naples|Italy|2','جسر ريالتو~the Rialto Bridge|البندقية~Venice|Italy|2',
+'ساغرادا فاميليا~the Sagrada Família|برشلونة~Barcelona|Spain|1','قصر الحمراء~the Alhambra|غرناطة~Granada|Spain|1','جامع قرطبة~the Mosque–Cathedral of Córdoba|قرطبة~Córdoba|Spain|1','متحف برادو~the Prado Museum|مدريد~Madrid|Spain|2','متحف غوغنهايم بلباو~the Guggenheim Museum Bilbao|بلباو~Bilbao|Spain|2',
+'ساعة بيغ بن~Big Ben|لندن~London|United Kingdom|1','جسر البرج~Tower Bridge|لندن~London|United Kingdom|1','قصر باكنغهام~Buckingham Palace|لندن~London|United Kingdom|1','ستونهنج~Stonehenge|سالزبوري~Salisbury|United Kingdom|1','عين لندن~the London Eye|لندن~London|United Kingdom|1','قلعة إدنبرة~Edinburgh Castle|إدنبرة~Edinburgh|United Kingdom|2',
+'بوابة براندنبورغ~the Brandenburg Gate|برلين~Berlin|Germany|1','قلعة نويشفانشتاين~Neuschwanstein Castle|بافاريا~Bavaria|Germany|1','كاتدرائية كولونيا~Cologne Cathedral|كولونيا~Cologne|Germany|2',
+'الأكروبوليس~the Acropolis|أثينا~Athens|Greece|1','الساحة الحمراء~Red Square|موسكو~Moscow|Russia|1','كاتدرائية القديس باسيل~Saint Basil’s Cathedral|موسكو~Moscow|Russia|1','متحف الإرميتاج~the Hermitage Museum|سانت بطرسبرغ~Saint Petersburg|Russia|2',
+'جسر تشارلز~Charles Bridge|براغ~Prague|Czech Republic|2','مبنى البرلمان المجري~the Hungarian Parliament Building|بودابست~Budapest|Hungary|2','قصر شونبرون~Schönbrunn Palace|فيينا~Vienna|Austria|2','تمثال حورية البحر الصغيرة~the Little Mermaid statue|كوبنهاغن~Copenhagen|Denmark|2','الأتوميوم~the Atomium|بروكسل~Brussels|Belgium|2','تمثال مانيكين بيس~Manneken Pis|بروكسل~Brussels|Belgium|2','برج بيليم~Belém Tower|لشبونة~Lisbon|Portugal|2','جبل الماترهورن~the Matterhorn|زيرمات~Zermatt|Switzerland|2',
+'آيا صوفيا~Hagia Sophia|إسطنبول~Istanbul|Turkey|1','جامع السلطان أحمد (الجامع الأزرق)~the Blue Mosque|إسطنبول~Istanbul|Turkey|1','قصر توبكابي~Topkapı Palace|إسطنبول~Istanbul|Turkey|2','كابادوكيا~Cappadocia|نيفشهير~Nevşehir|Turkey|1','باموكالي~Pamukkale|دنيزلي~Denizli|Turkey|2','أطلال أفسس~Ephesus|إزمير~İzmir|Turkey|2',
+'أهرامات الجيزة~the Pyramids of Giza|الجيزة~Giza|Egypt|1','أبو الهول~the Great Sphinx|الجيزة~Giza|Egypt|1','معبد الكرنك~Karnak Temple|الأقصر~Luxor|Egypt|1','معبد أبو سمبل~Abu Simbel|أسوان~Aswan|Egypt|1','وادي الملوك~the Valley of the Kings|الأقصر~Luxor|Egypt|1','قلعة صلاح الدين~the Cairo Citadel|القاهرة~Cairo|Egypt|2','مكتبة الإسكندرية~the Bibliotheca Alexandrina|الإسكندرية~Alexandria|Egypt|2',
+'المسجد الحرام~the Great Mosque of Mecca|مكة المكرمة~Mecca|Saudi Arabia|1','المسجد النبوي~the Prophet’s Mosque|المدينة المنورة~Medina|Saudi Arabia|1','مدائن صالح (الحِجر)~Hegra (Mada’in Salih)|العُلا~AlUla|Saudi Arabia|1','حي الطريف بالدرعية~At-Turaif in Diriyah|الدرعية~Diriyah|Saudi Arabia|2','برج المملكة~Kingdom Centre|الرياض~Riyadh|Saudi Arabia|1','قصر المصمك~Masmak Fortress|الرياض~Riyadh|Saudi Arabia|1','جدة التاريخية (البلد)~Historic Jeddah (Al-Balad)|جدة~Jeddah|Saudi Arabia|1',
+'برج خليفة~the Burj Khalifa|دبي~Dubai|United Arab Emirates|1','برج العرب~the Burj Al Arab|دبي~Dubai|United Arab Emirates|1','جامع الشيخ زايد~Sheikh Zayed Grand Mosque|أبوظبي~Abu Dhabi|United Arab Emirates|1','متحف اللوفر أبوظبي~the Louvre Abu Dhabi|أبوظبي~Abu Dhabi|United Arab Emirates|1','متحف الفن الإسلامي~the Museum of Islamic Art|الدوحة~Doha|Qatar|1','أبراج الكويت~the Kuwait Towers|مدينة الكويت~Kuwait City|Kuwait|1','جامع السلطان قابوس الأكبر~Sultan Qaboos Grand Mosque|مسقط~Muscat|Oman|1','قلعة البحرين~Qal’at al-Bahrain|المنامة~Manama|Bahrain|2',
+'البتراء~Petra|وادي موسى~Wadi Musa|Jordan|1','وادي رم~Wadi Rum|العقبة~Aqaba|Jordan|1','مدينة جرش الأثرية~Jerash|جرش~Jerash|Jordan|2','الجامع الأموي~the Umayyad Mosque|دمشق~Damascus|Syria|1','قلعة حلب~the Citadel of Aleppo|حلب~Aleppo|Syria|1','أطلال تدمر~Palmyra|حمص~Homs|Syria|1','معبد بعلبك~the Baalbek temples|بعلبك~Baalbek|Lebanon|2','مغارة جعيتا~Jeita Grotto|جبيل~Byblos|Lebanon|2',
+'ملوية سامراء~the Spiral Minaret of Samarra|سامراء~Samarra|Iraq|1','مدينة بابل الأثرية~Babylon|الحلة~Hillah|Iraq|1','زقورة أور~the Ziggurat of Ur|الناصرية~Nasiriyah|Iraq|2','مدينة شبام~Shibam|حضرموت~Hadhramaut|Yemen|1','دار الحجر~Dar al-Hajar|صنعاء~Sanaa|Yemen|2',
+'جامع القرويين~al-Qarawiyyin|فاس~Fez|Morocco|1','مسجد الحسن الثاني~the Hassan II Mosque|الدار البيضاء~Casablanca|Morocco|1','ساحة جامع الفنا~Jemaa el-Fnaa|مراكش~Marrakesh|Morocco|1','مدينة شفشاون الزرقاء~Chefchaouen|شفشاون~Chefchaouen|Morocco|2','جامع عقبة بن نافع~the Great Mosque of Kairouan|القيروان~Kairouan|Tunisia|1','أطلال قرطاج~Carthage|تونس~Tunis|Tunisia|1','مسرح الجم~the Amphitheatre of El Jem|الجم~El Jem|Tunisia|2','مقام الشهيد~Maqam Echahid|الجزائر~Algiers|Algeria|2','لبدة الكبرى~Leptis Magna|الخمس~Khoms|Libya|2',
+'تاج محل~the Taj Mahal|أغرا~Agra|India|1','القلعة الحمراء~the Red Fort|دلهي~Delhi|India|2','قطب منار~Qutub Minar|دلهي~Delhi|India|2','بوابة الهند~the Gateway of India|مومباي~Mumbai|India|2','المعبد الذهبي~the Golden Temple|أمريتسار~Amritsar|India|2','مسجد بادشاهي~the Badshahi Mosque|لاهور~Lahore|Pakistan|1','مسجد فيصل~Faisal Mosque|إسلام آباد~Islamabad|Pakistan|1','ساحة ريجستان~the Registan|سمرقند~Samarkand|Uzbekistan|1','ساحة نقش جهان~Naqsh-e Jahan Square|أصفهان~Isfahan|Iran|1','أطلال برسبوليس~Persepolis|شيراز~Shiraz|Iran|2',
+'سور الصين العظيم~the Great Wall|بكين~Beijing|China|1','المدينة المحرمة~the Forbidden City|بكين~Beijing|China|1','جيش التيراكوتا~the Terracotta Army|شيان~Xi’an|China|1','برج لؤلؤة الشرق~the Oriental Pearl Tower|شنغهاي~Shanghai|China|2','قصر بوتالا~the Potala Palace|لاسا~Lhasa|China|2',
+'جبل فوجي~Mount Fuji|شيزوكا~Shizuoka|Japan|1','معبد كينكاكو-جي~Kinkaku-ji|كيوتو~Kyoto|Japan|2','برج طوكيو سكاي تري~Tokyo Skytree|طوكيو~Tokyo|Japan|2','نصب السلام في هيروشيما~the Hiroshima Peace Memorial|هيروشيما~Hiroshima|Japan|1','قصر غيونغبوكغونغ~Gyeongbokgung Palace|سيول~Seoul|South Korea|2',
+'معبد أنغكور وات~Angkor Wat|سيام ريب~Siem Reap|Cambodia|1','برجا بتروناس~the Petronas Towers|كوالالمبور~Kuala Lumpur|Malaysia|1','مارينا باي ساندز~Marina Bay Sands|سنغافورة~Singapore|Singapore|1','معبد بوروبودور~Borobudur|ماغيلانغ~Magelang|Indonesia|1','القصر الكبير~the Grand Palace|بانكوك~Bangkok|Thailand|1','خليج ها لونغ~Ha Long Bay|كوانغ نينه~Quảng Ninh|Vietnam|1','باغودا شويداغون~Shwedagon Pagoda|يانغون~Yangon|Myanmar|2',
+'تمثال الحرية~the Statue of Liberty|نيويورك~New York City|United States|1','مبنى إمباير ستيت~the Empire State Building|نيويورك~New York City|United States|1','جسر البوابة الذهبية~the Golden Gate Bridge|سان فرانسيسكو~San Francisco|United States|1','البيت الأبيض~the White House|واشنطن~Washington, D.C.|United States|1','جبل رشمور~Mount Rushmore|داكوتا الجنوبية~South Dakota|United States|1','الأخدود العظيم~the Grand Canyon|أريزونا~Arizona|United States|1','لافتة هوليوود~the Hollywood Sign|لوس أنجلوس~Los Angeles|United States|1','متنزه يلوستون~Yellowstone National Park|وايومنغ~Wyoming|United States|2','سجن ألكاتراز~Alcatraz|سان فرانسيسكو~San Francisco|United States|2','تايمز سكوير~Times Square|نيويورك~New York City|United States|1',
+'برج سي إن~the CN Tower|تورونتو~Toronto|Canada|1','شلالات نياغارا~Niagara Falls|أونتاريو~Ontario|Canada|1','بحيرة لويز~Lake Louise|ألبرتا~Alberta|Canada|2','هرم تشيتشن إيتزا~Chichén Itzá|يوكاتان~Yucatán|Mexico|1','أهرامات تيوتيهواكان~Teotihuacan|مكسيكو سيتي~Mexico City|Mexico|2','قناة بنما~the Panama Canal|بنما~Panama City|Panama|1',
+'تمثال المسيح الفادي~Christ the Redeemer|ريو دي جانيرو~Rio de Janeiro|Brazil|1','جبل السكر~Sugarloaf Mountain|ريو دي جانيرو~Rio de Janeiro|Brazil|2','ملعب ماراكانا~the Maracanã|ريو دي جانيرو~Rio de Janeiro|Brazil|1','ماتشو بيتشو~Machu Picchu|كوسكو~Cusco|Peru|1','خطوط نازكا~the Nazca Lines|نازكا~Nazca|Peru|2','شلالات إغوازو~Iguazú Falls|ميسيونس~Misiones|Argentina|2','شلالات أنخل~Angel Falls|بوليفار~Bolívar|Venezuela|2','تماثيل جزيرة الفصح (موآي)~the Moai of Easter Island|جزيرة الفصح~Easter Island|Chile|1','سهل أويوني الملحي~the Uyuni Salt Flat|أويوني~Uyuni|Bolivia|2',
+'دار أوبرا سيدني~the Sydney Opera House|سيدني~Sydney|Australia|1','صخرة أولورو~Uluru|الإقليم الشمالي~Northern Territory|Australia|1','الحاجز المرجاني العظيم~the Great Barrier Reef|كوينزلاند~Queensland|Australia|1','جسر ميناء سيدني~the Sydney Harbour Bridge|سيدني~Sydney|Australia|2',
+'جبل كليمنجارو~Mount Kilimanjaro|كليمنجارو~Kilimanjaro|Tanzania|1','شلالات فيكتوريا~Victoria Falls|ليفينغستون~Livingstone|Zambia|1','جبل الطاولة~Table Mountain|كيب تاون~Cape Town|South Africa|1','كنائس لاليبيلا~the Lalibela churches|لاليبيلا~Lalibela|Ethiopia|2','جامع جينيه الكبير~the Great Mosque of Djenné|جينيه~Djenné|Mali|2','محمية ماساي مارا~the Maasai Mara|ناروك~Narok|Kenya|2'
+];
+// animal~en | class (M mammal B bird R reptile A amphibian F fish I insect S arachnid L mollusc C crustacean) | diet (H/C/O or empty) | typical adult weight kg | tier
+var KB_ANIMALS=[
+'الحوت الأزرق~blue whale|M|C|140000|1','حوت العنبر~sperm whale|M|C|40000|2','الحوت الأحدب~humpback whale|M|C|30000|2','الدلفين~bottlenose dolphin|M|C|300|1','الأوركا (الحوت القاتل)~orca|M|C|5000|1','خروف البحر~manatee|M|H|500|2','الفقمة~harbor seal|M|C|100|1','الفظ~walrus|M|C|1200|2','ثعلب الماء~sea otter|M|C|30|2',
+'الفيل الأفريقي~African elephant|M|H|6000|1','وحيد القرن~white rhinoceros|M|H|2300|1','فرس النهر~hippopotamus|M|H|1500|1','الزرافة~giraffe|M|H|1200|1','الجمل~dromedary camel|M|H|500|1','الحصان~horse|M|H|500|1','الحمار الوحشي~zebra|M|H|350|1','البقر~cow|M|H|700|1','الجاموس الأفريقي~African buffalo|M|H|600|2','البيسون~American bison|M|H|700|2','الموظ~moose|M|H|500|2','الرنة~reindeer|M|H|120|2','الغزال~gazelle|M|H|25|1','الماعز~goat|M|H|50|1','الخروف~sheep|M|H|70|1','الكنغر~red kangaroo|M|H|60|1','الكوالا~koala|M|H|10|1','الباندا العملاق~giant panda|M|H|100|1','الكسلان~sloth|M|H|5|2','الأرنب~rabbit|M|H|2|1','السنجاب~squirrel|M|O|0.5|1','القندس~beaver|M|H|20|2','الومبت~wombat|M|H|30|3','الوعل النوبي~Nubian ibex|M|H|60|2','المها العربي~Arabian oryx|M|H|70|1',
+'الأسد~lion|M|C|190|1','النمر~tiger|M|C|220|1','الفهد~cheetah|M|C|50|1','النمر المرقط~leopard|M|C|60|1','الذئب~gray wolf|M|C|40|1','الثعلب~red fox|M|O|6|1','الضبع~spotted hyena|M|C|60|2','الدب القطبي~polar bear|M|C|450|1','الدب البني~brown bear|M|O|300|1','القط~domestic cat|M|C|4.5|1','الكلب~dog|M||25|1','الراكون~raccoon|M|O|7|2','الغرير~honey badger|M||10|2','قنفذ الشوك~hedgehog|M|C|1|2','الخفاش~bat|M||0.03|1','الخلد~mole|M|C|0.1|2',
+'الشمبانزي~chimpanzee|M|O|50|1','الغوريلا~gorilla|M|H|160|1','إنسان الغاب~orangutan|M||80|1','الليمور~lemur|M||2.5|2','قرد البابون~baboon|M|O|25|2','خلد الماء~platypus|M|C|1.5|2','آكل النمل~giant anteater|M|C|35|2','المدرع~armadillo|M||5|2','الخنزير البري~wild boar|M|O|100|2','الفأر~mouse|M|O|0.02|1','الزبابة (الزغبة)~shrew|M|C|0.01|3',
+'النعامة~ostrich|B||110|1','البطريق الإمبراطوري~emperor penguin|B|C|30|1','النسر الأصلع~bald eagle|B|C|5|1','الشاهين~peregrine falcon|B|C|1|1','البومة~owl|B|C|1.5|1','الطاووس~peacock|B|O|5|1','الببغاء~parrot|B|H|0.5|1','الطنان~hummingbird|B|H|0.004|1','الفلامنغو~flamingo|B||3|1','البجعة~pelican|B|C|8|2','اللقلق~stork|B|C|3.5|2','الحمامة~pigeon|B|H|0.35|1','الغراب~crow|B|O|0.5|1','الكيوي~kiwi|B|O|2.5|2','الإيمو~emu|B|O|40|2','الكندور~Andean condor|B|C|12|2','القطرس~albatross|B|C|9|2','الديك الرومي~turkey|B|O|8|1','الهدهد~hoopoe|B|C|0.07|1','العقاب الذهبي~golden eagle|B|C|5|2',
+'التمساح النيلي~Nile crocodile|R|C|400|1','التمساح الأمريكي~American alligator|R|C|350|2','السلحفاة البحرية~green sea turtle|R|H|150|1','سلحفاة غالاباغوس~Galápagos tortoise|R|H|250|2','الحرباء~chameleon|R|C|0.15|1','الإغوانا~green iguana|R|H|4|2','تنين كومودو~Komodo dragon|R|C|80|1','الكوبرا الملكية~king cobra|R|C|6|1','الأناكوندا~green anaconda|R|C|70|1','الضب~spiny-tailed lizard (dhub)|R|H|1.5|1','الأبراص~gecko|R|C|0.05|1','الأفعى المجلجلة~rattlesnake|R|C|2|2',
+'الضفدع~frog|A|C|0.1|1','العلجوم~toad|A|C|0.1|2','السمندل~salamander|A|C|0.05|2','الأكسولوتل~axolotl|A|C|0.1|2','ضفدع السهم السام~poison dart frog|A|C|0.002|2',
+'القرش الأبيض~great white shark|F|C|1100|1','القرش الحوتي~whale shark|F|C|19000|1','سمكة المهرج~clownfish|F|O|0.25|1','حصان البحر~seahorse|F|C|0.01|1','السلمون~salmon|F|C|5|1','التونة~bluefin tuna|F|C|250|1','سمكة أبو شراع~sailfish|F|C|60|2','سمكة البيرانا~piranha|F||1|1','ثعبان الماء الكهربائي~electric eel|F|C|20|2','السمكة المنتفخة~pufferfish|F|O|1|2','سمكة الراي اللاسعة~stingray|F|C|30|2','سمكة الشمس~ocean sunfish|F|C|1000|2',
+'النحلة~honeybee|I|H|0.0001|1','النملة~ant|I|O|0.000003|1','الفراشة~butterfly|I|H|0.0005|1','الخنفساء~beetle|I||0.002|1','الجراد~locust|I|H|0.002|1','اليعسوب~dragonfly|I|C|0.001|1','فرس النبي~praying mantis|I|C|0.003|1','البعوضة~mosquito|I||0.000002|1','الصرصور~cockroach|I|O|0.001|1','النمل الأبيض~termite|I|H|0.000001|2','اليراعة~firefly|I||0.00002|2',
+'العنكبوت~spider|S|C|0.001|1','العقرب~scorpion|S|C|0.03|1','القراد~tick|S||0.0001|2','عنكبوت الرتيلاء~tarantula|S|C|0.08|2',
+'الأخطبوط~octopus|L|C|10|1','الحبار~squid|L|C|5|1','الحلزون~snail|L|H|0.01|1','المحار~oyster|L||0.05|2','البزاقة~slug|L|H|0.01|2',
+'السلطعون~crab|C|O|1|1','الكركند~lobster|C|O|1|1','الروبيان~shrimp|C|O|0.01|1','قمل الخشب~woodlouse|C||0.0001|3','البرنقيل~barnacle|C||0.001|3'
+];
+// invention~en | inventor~en | year | tier
+var KB_INVENTIONS=[
+'المصباح الكهربائي العملي~the practical incandescent light bulb|توماس إديسون~Thomas Edison|1879|1','الهاتف~the telephone|ألكسندر غراهام بيل~Alexander Graham Bell|1876|1','الطباعة بالحروف المتحركة في أوروبا~the European movable-type printing press|يوهان غوتنبرغ~Johannes Gutenberg|1440|1','الطائرة ذات المحرك~the powered airplane|الأخوان رايت~the Wright brothers|1903|1','المذياع (الراديو)~radio telegraphy|غولييلمو ماركوني~Guglielmo Marconi|1895|2','التيار المتردد (المحرك الحثّي)~the induction motor|نيكولا تسلا~Nikola Tesla|1888|2','الديناميت~dynamite|ألفريد نوبل~Alfred Nobel|1867|1','البنسلين~penicillin|ألكسندر فليمنغ~Alexander Fleming|1928|1','لقاح الجدري~the smallpox vaccine|إدوارد جينر~Edward Jenner|1796|1','البسترة~pasteurization|لويس باستير~Louis Pasteur|1864|1',
+'المحرك البخاري المحسّن~the improved steam engine|جيمس واط~James Watt|1769|1','البطارية الكهربائية~the electric battery|أليساندرو فولتا~Alessandro Volta|1800|2','التلغراف وشفرة مورس~Morse code telegraph|صامويل مورس~Samuel Morse|1837|2','الفونوغراف~the phonograph|توماس إديسون~Thomas Edison|1877|2','السيارة ذات محرك الاحتراق~the gasoline automobile|كارل بنز~Karl Benz|1886|1','محرك الديزل~the diesel engine|رودولف ديزل~Rudolf Diesel|1897|1','التلفاز الإلكتروني الميكانيكي~the mechanical television|جون لوجي بيرد~John Logie Baird|1926|2','الشبكة العنكبوتية العالمية~the World Wide Web|تيم بيرنرز-لي~Tim Berners-Lee|1989|1','الأشعة السينية (اكتشافها)~X-rays|فيلهلم رونتغن~Wilhelm Röntgen|1895|1','الإطار الهوائي المطاطي~the pneumatic tyre|جون بويد دنلوب~John Boyd Dunlop|1888|3',
+'التلسكوب الفلكي المحسّن~the improved astronomical telescope|غاليليو غاليلي~Galileo Galilei|1609|1','المجهر المحسّن~the improved microscope|أنطوني فان ليفنهوك~Antonie van Leeuwenhoek|1676|2','مقياس الحرارة الزئبقي~the mercury thermometer|دانيال فهرنهايت~Daniel Fahrenheit|1714|2','الباروميتر~the barometer|إيفانجيليستا توريتشيلي~Evangelista Torricelli|1643|2','مانعة الصواعق~the lightning rod|بنجامين فرانكلين~Benjamin Franklin|1752|1','آلة الخياطة العملية~the practical sewing machine|إلياس هاو~Elias Howe|1846|3','المسدس الدوّار~the revolver|صامويل كولت~Samuel Colt|1836|3','ماكينة حلج القطن~the cotton gin|إيلي ويتني~Eli Whitney|1793|3','الآلة الكاتبة التجارية~the commercial typewriter|كريستوفر شولز~Christopher Sholes|1868|3','الدراجة ذات الدواسات~the pedal bicycle|كيركباتريك ماكميلان~Kirkpatrick Macmillan|1839|3',
+'المصعد الآمن~the safety elevator|إليشا أوتيس~Elisha Otis|1852|2','الترانزستور~the transistor|باردين وبراتين وشوكلي~Bardeen, Brattain and Shockley|1947|2','الليزر~the laser|ثيودور مايمان~Theodore Maiman|1960|2','الحاسوب الإلكتروني ENIAC~the ENIAC computer|إيكرت وموكلي~Eckert and Mauchly|1945|3','الآلة الحاسبة الميكانيكية~the mechanical calculator (Pascaline)|بليز باسكال~Blaise Pascal|1642|2','فكرة الحاسوب التحليلي~the Analytical Engine|تشارلز باباج~Charles Babbage|1837|2','السفينة البخارية التجارية~the commercial steamboat|روبرت فولتون~Robert Fulton|1807|3','القاطرة البخارية «روكيت»~the Rocket steam locomotive|جورج ستيفنسون~George Stephenson|1829|2','الكاميرا الشخصية «كوداك»~the Kodak camera|جورج إيستمان~George Eastman|1888|3','الصورة الضوئية الأولى~the first photograph|نيسيفور نييبس~Nicéphore Niépce|1826|3',
+'الثلاجة الكهربائية الحديثة~electric refrigeration|كارل فون ليندي~Carl von Linde|1876|3','المكيف الحديث~modern air conditioning|ويليس كارير~Willis Carrier|1902|2','فرن الميكروويف~the microwave oven|بيرسي سبنسر~Percy Spencer|1945|2','لقاح شلل الأطفال~the polio vaccine|جوناس سالك~Jonas Salk|1955|2','الإنسولين (عزله للعلاج)~therapeutic insulin|بانتنغ وبست~Banting and Best|1921|2','الهاتف المحمول~the mobile phone|مارتن كوبر~Martin Cooper|1973|2','الرادار العملي~practical radar|روبرت واتسون-وات~Robert Watson-Watt|1935|3','المحرك النفاث~the jet engine|فرانك ويتل~Frank Whittle|1930|2','المظلة الحديثة (الباراشوت)~the modern parachute|لويس سيباستيان لونورمان~Louis-Sébastien Lenormand|1783|3','المنطاد الهوائي الساخن~the hot-air balloon|الأخوان مونغولفييه~the Montgolfier brothers|1783|2',
+'الطريقة البارزة للمكفوفين~braille|لويس برايل~Louis Braille|1824|1','السماعة الطبية~the stethoscope|رينيه لاينك~René Laennec|1816|2','البطاقة المثقبة للنول~the Jacquard loom|جوزيف ماري جاكار~Joseph Marie Jacquard|1804|3','الغواصة الحديثة~the modern submarine|جون هولاند~John Holland|1897|3','المروحية العملية~the practical helicopter|إيغور سيكورسكي~Igor Sikorsky|1939|2','الصاروخ بالوقود السائل~the liquid-fuel rocket|روبرت غودارد~Robert Goddard|1926|2','قانون الجاذبية~the law of universal gravitation|إسحاق نيوتن~Isaac Newton|1687|1','النظرية النسبية الخاصة~special relativity|ألبرت أينشتاين~Albert Einstein|1905|1','الجدول الدوري~the periodic table|ديمتري مندلييف~Dmitri Mendeleev|1869|1','نظرية التطور بالانتقاء الطبيعي~evolution by natural selection|تشارلز داروين~Charles Darwin|1859|1',
+'قوانين الحركة الثلاثة~the three laws of motion|إسحاق نيوتن~Isaac Newton|1687|1','النموذج الشمسي المركزي~the heliocentric model|نيكولاس كوبرنيكوس~Nicolaus Copernicus|1543|1','قوانين حركة الكواكب~the laws of planetary motion|يوهانس كبلر~Johannes Kepler|1609|2','اكتشاف الإلكترون~the discovery of the electron|جي جي طومسون~J. J. Thomson|1897|2','اكتشاف النواة الذرية~the discovery of the atomic nucleus|إرنست رذرفورد~Ernest Rutherford|1911|2','اكتشاف الراديوم~the discovery of radium|ماري وبيير كوري~Marie and Pierre Curie|1898|1','بنية الحمض النووي اللولبية~the double-helix structure of DNA|واتسون وكريك~Watson and Crick|1953|1','قوانين الوراثة~the laws of inheritance|غريغور مندل~Gregor Mendel|1866|1','التصنيف العلمي للكائنات~binomial classification of living things|كارل لينيوس~Carl Linnaeus|1753|2','الحث الكهرومغناطيسي~electromagnetic induction|مايكل فاراداي~Michael Faraday|1831|2'
+];
+// book~en | author~en | tier
+var KB_BOOKS=[
+'هاملت~Hamlet|ويليام شكسبير~William Shakespeare|1','روميو وجولييت~Romeo and Juliet|ويليام شكسبير~William Shakespeare|1','ماكبث~Macbeth|ويليام شكسبير~William Shakespeare|1','دون كيخوته~Don Quixote|ميغيل دي ثربانتس~Miguel de Cervantes|1','البؤساء~Les Misérables|فيكتور هوغو~Victor Hugo|1','أحدب نوتردام~The Hunchback of Notre-Dame|فيكتور هوغو~Victor Hugo|1','الحرب والسلام~War and Peace|ليو تولستوي~Leo Tolstoy|1','آنا كارنينا~Anna Karenina|ليو تولستوي~Leo Tolstoy|2','الجريمة والعقاب~Crime and Punishment|فيودور دوستويفسكي~Fyodor Dostoevsky|1','الإخوة كارامازوف~The Brothers Karamazov|فيودور دوستويفسكي~Fyodor Dostoevsky|2',
+'الكوميديا الإلهية~The Divine Comedy|دانتي أليغييري~Dante Alighieri|2','الإلياذة~The Iliad|هوميروس~Homer|1','الأوديسة~The Odyssey|هوميروس~Homer|1','الجمهورية~The Republic|أفلاطون~Plato|1','الأمير~The Prince|نيكولو مكيافيلي~Niccolò Machiavelli|1','أصل الأنواع~On the Origin of Species|تشارلز داروين~Charles Darwin|1','ثروة الأمم~The Wealth of Nations|آدم سميث~Adam Smith|2','رأس المال~Das Kapital|كارل ماركس~Karl Marx|2','فن الحرب~The Art of War|سون تزو~Sun Tzu|1','الأصول الرياضية للفلسفة الطبيعية (البرينكيبيا)~Principia Mathematica (1687)|إسحاق نيوتن~Isaac Newton|2',
+'روبنسون كروزو~Robinson Crusoe|دانيال ديفو~Daniel Defoe|1','رحلات جليفر~Gulliver’s Travels|جوناثان سويفت~Jonathan Swift|1','أوليفر تويست~Oliver Twist|تشارلز ديكنز~Charles Dickens|1','قصة مدينتين~A Tale of Two Cities|تشارلز ديكنز~Charles Dickens|2','كبرياء وتحامل~Pride and Prejudice|جين أوستن~Jane Austen|1','مرتفعات ويذرينغ~Wuthering Heights|إميلي برونتي~Emily Brontë|2','جين آير~Jane Eyre|شارلوت برونتي~Charlotte Brontë|2','فرانكنشتاين~Frankenstein|ماري شيلي~Mary Shelley|1','دراكولا~Dracula|برام ستوكر~Bram Stoker|1','دكتور جيكل ومستر هايد~Strange Case of Dr Jekyll and Mr Hyde|روبرت لويس ستيفنسون~Robert Louis Stevenson|2',
+'جزيرة الكنز~Treasure Island|روبرت لويس ستيفنسون~Robert Louis Stevenson|1','أليس في بلاد العجائب~Alice’s Adventures in Wonderland|لويس كارول~Lewis Carroll|1','موبي ديك~Moby-Dick|هيرمان ملفيل~Herman Melville|1','مغامرات توم سوير~The Adventures of Tom Sawyer|مارك توين~Mark Twain|1','الشيخ والبحر~The Old Man and the Sea|إرنست همنغواي~Ernest Hemingway|1','وداعاً للسلاح~A Farewell to Arms|إرنست همنغواي~Ernest Hemingway|2','غاتسبي العظيم~The Great Gatsby|ف. سكوت فيتزجيرالد~F. Scott Fitzgerald|1','1984~Nineteen Eighty-Four|جورج أورويل~George Orwell|1','مزرعة الحيوان~Animal Farm|جورج أورويل~George Orwell|1','عالم جديد شجاع~Brave New World|ألدوس هكسلي~Aldous Huxley|2',
+'الأمير الصغير~The Little Prince|أنطوان دو سانت إكزوبيري~Antoine de Saint-Exupéry|1','الكونت دي مونت كريستو~The Count of Monte Cristo|ألكسندر دوما~Alexandre Dumas|1','الفرسان الثلاثة~The Three Musketeers|ألكسندر دوما~Alexandre Dumas|1','عشرون ألف فرسخ تحت البحر~Twenty Thousand Leagues Under the Seas|جول فيرن~Jules Verne|1','حول العالم في ثمانين يوماً~Around the World in Eighty Days|جول فيرن~Jules Verne|1','مدام بوفاري~Madame Bovary|غوستاف فلوبير~Gustave Flaubert|2','الغريب~The Stranger|ألبير كامو~Albert Camus|2','التحول (المسخ)~The Metamorphosis|فرانز كافكا~Franz Kafka|1','فاوست~Faust|يوهان فولفغانغ فون غوته~Johann Wolfgang von Goethe|2','مئة عام من العزلة~One Hundred Years of Solitude|غابرييل غارسيا ماركيز~Gabriel García Márquez|1',
+'الخيميائي~The Alchemist|باولو كويلو~Paulo Coelho|1','قتل طائر مقلد~To Kill a Mockingbird|هاربر لي~Harper Lee|1','الحارس في حقل الشوفان~The Catcher in the Rye|جيه دي سالينجر~J. D. Salinger|2','سيد الخواتم~The Lord of the Rings|جيه آر آر تولكين~J. R. R. Tolkien|1','الهوبيت~The Hobbit|جيه آر آر تولكين~J. R. R. Tolkien|1','هاري بوتر~Harry Potter|جيه كيه رولينغ~J. K. Rowling|1','شيرلوك هولمز~Sherlock Holmes|آرثر كونان دويل~Arthur Conan Doyle|1','جريمة في قطار الشرق السريع~Murder on the Orient Express|أغاثا كريستي~Agatha Christie|1','كوخ العم توم~Uncle Tom’s Cabin|هارييت بيتشر ستو~Harriet Beecher Stowe|2','عناقيد الغضب~The Grapes of Wrath|جون شتاينبك~John Steinbeck|2',
+'الحرافيش~The Harafish|نجيب محفوظ~Naguib Mahfouz|1','الثلاثية (بين القصرين)~The Cairo Trilogy|نجيب محفوظ~Naguib Mahfouz|1','الأيام~The Days|طه حسين~Taha Hussein|1','موسم الهجرة إلى الشمال~Season of Migration to the North|الطيب صالح~Tayeb Salih|1','مدن الملح~Cities of Salt|عبد الرحمن منيف~Abdul Rahman Munif|1','النبي~The Prophet|جبران خليل جبران~Kahlil Gibran|1','رجال في الشمس~Men in the Sun|غسان كنفاني~Ghassan Kanafani|2','عائد إلى حيفا~Returning to Haifa|غسان كنفاني~Ghassan Kanafani|2','زقاق المدق~Midaq Alley|نجيب محفوظ~Naguib Mahfouz|1','عزازيل~Azazeel|يوسف زيدان~Youssef Ziedan|2',
+'كليلة ودمنة (الترجمة العربية)~Kalila wa-Dimna (Arabic version)|ابن المقفع~Ibn al-Muqaffa|1','المقدمة~the Muqaddimah|ابن خلدون~Ibn Khaldun|1','القانون في الطب~The Canon of Medicine|ابن سينا~Avicenna|1','رحلة ابن بطوطة (تحفة النظار)~The Travels of Ibn Battuta|ابن بطوطة~Ibn Battuta|1','البخلاء~Al-Bukhala (The Misers)|الجاحظ~Al-Jahiz|1','الحيوان (كتاب)~Kitab al-Hayawan|الجاحظ~Al-Jahiz|2','كتاب المناظر~Book of Optics|ابن الهيثم~Ibn al-Haytham|1','حي بن يقظان~Hayy ibn Yaqdhan|ابن طفيل~Ibn Tufail|2','طوق الحمامة~The Ring of the Dove|ابن حزم~Ibn Hazm|2','الكتاب المختصر في حساب الجبر والمقابلة~The Compendious Book on Algebra|الخوارزمي~Al-Khwarizmi|1',
+'ألف ليلة وليلة (جمعها الأشهر)~One Thousand and One Nights|مؤلف مجهول~anonymous|2','الشاهنامة~the Shahnameh|الفردوسي~Ferdowsi|2','المثنوي~the Masnavi|جلال الدين الرومي~Rumi|2','رباعيات الخيام~the Rubaiyat|عمر الخيام~Omar Khayyam|1','الغيتانجالي~Gitanjali|رابندرانات طاغور~Rabindranath Tagore|2','الشيء ينهار (أشياء تتداعى)~Things Fall Apart|تشينوا أتشيبي~Chinua Achebe|2','ذهب مع الريح~Gone with the Wind|مارغريت ميتشل~Margaret Mitchell|1','بينوكيو~The Adventures of Pinocchio|كارلو كولودي~Carlo Collodi|1','بيتر بان~Peter Pan|جيه إم باري~J. M. Barrie|1','كتاب الأدغال~The Jungle Book|روديارد كبلينغ~Rudyard Kipling|1'
+];
+// artwork~en | artist~en | tier
+var KB_ART=[
+'الموناليزا~the Mona Lisa|ليوناردو دافنشي~Leonardo da Vinci|1','العشاء الأخير~The Last Supper|ليوناردو دافنشي~Leonardo da Vinci|1','ليلة النجوم~The Starry Night|فينسنت فان غوخ~Vincent van Gogh|1','عباد الشمس~Sunflowers|فينسنت فان غوخ~Vincent van Gogh|1','الصرخة~The Scream|إدفارد مونك~Edvard Munch|1','غيرنيكا~Guernica|بابلو بيكاسو~Pablo Picasso|1','إصرار الذاكرة (الساعات الذائبة)~The Persistence of Memory|سلفادور دالي~Salvador Dalí|1','الفتاة ذات القرط اللؤلؤي~Girl with a Pearl Earring|يوهانس فيرمير~Johannes Vermeer|1','مولد فينوس~The Birth of Venus|ساندرو بوتيتشيلي~Sandro Botticelli|1','سقف كنيسة سيستينا~the Sistine Chapel ceiling|مايكل أنجلو~Michelangelo|1',
+'تمثال داود~the statue of David|مايكل أنجلو~Michelangelo|1','المفكر~The Thinker|أوغست رودان~Auguste Rodin|1','دورية الليل~The Night Watch|رامبرانت~Rembrandt|1','مدرسة أثينا~The School of Athens|رافائيل~Raphael|1','القُبلة~The Kiss (1908)|غوستاف كليمت~Gustav Klimt|1','زنابق الماء~Water Lilies|كلود مونيه~Claude Monet|1','انطباع، شروق الشمس~Impression, Sunrise|كلود مونيه~Claude Monet|2','الموجة العظيمة قبالة كاناغاوا~The Great Wave off Kanagawa|كاتسوشيكا هوكوساي~Katsushika Hokusai|1','القوطي الأمريكي~American Gothic|غرانت وود~Grant Wood|2','الحرية تقود الشعب~Liberty Leading the People|أوجين دولاكروا~Eugène Delacroix|2',
+'لاس مينيناس (وصيفات الشرف)~Las Meninas|دييغو فيلاسكيز~Diego Velázquez|2','الثالث من مايو 1808~The Third of May 1808|فرانسيسكو غويا~Francisco Goya|2','حديقة المباهج الأرضية~The Garden of Earthly Delights|هيرونيموس بوش~Hieronymus Bosch|2','علب حساء كامبل~Campbell’s Soup Cans|آندي وارهول~Andy Warhol|1','ابن الإنسان~The Son of Man|رينيه ماغريت~René Magritte|2','نساء أفينيون~Les Demoiselles d’Avignon|بابلو بيكاسو~Pablo Picasso|2','نايتهوكس (صقور الليل)~Nighthawks|إدوارد هوبر~Edward Hopper|2','غرفة النوم في آرل~The Bedroom|فينسنت فان غوخ~Vincent van Gogh|2','حفلة على ضفاف السين (مولان دو لا غاليت)~Bal du moulin de la Galette|بيير أوغست رينوار~Pierre-Auguste Renoir|2','الراقصات~The Dance Class|إدغار ديغا~Edgar Degas|2',
+'السيمفونية الخامسة~Symphony No. 5|لودفيغ فان بيتهوفن~Ludwig van Beethoven|1','السيمفونية التاسعة («نشيد الفرح»)~Symphony No. 9 («Ode to Joy»)|لودفيغ فان بيتهوفن~Ludwig van Beethoven|1','الفصول الأربعة~The Four Seasons|أنطونيو فيفالدي~Antonio Vivaldi|1','الناي السحري~The Magic Flute|فولفغانغ أماديوس موتسارت~Wolfgang Amadeus Mozart|1','بحيرة البجع~Swan Lake|بيوتر تشايكوفسكي~Pyotr Tchaikovsky|1','كسارة البندق~The Nutcracker|بيوتر تشايكوفسكي~Pyotr Tchaikovsky|1','الدانوب الأزرق~The Blue Danube|يوهان شتراوس الابن~Johann Strauss II|2','فور إليز~Für Elise|لودفيغ فان بيتهوفن~Ludwig van Beethoven|1','أوبرا عايدة~Aida|جوزيبي فيردي~Giuseppe Verdi|2','كارمن~Carmen|جورج بيزيه~Georges Bizet|2'
+];
+
+// event~en | year (AD) | tier
+var KB_EVENTS=[
+'الهجرة النبوية إلى المدينة~the Hijra of the Prophet to Medina|622|1','غزوة بدر~the Battle of Badr|624|1','فتح مكة~the conquest of Mecca|630|1','معركة اليرموك~the Battle of Yarmouk|636|2','فتح الأندلس~the Muslim conquest of Iberia|711|1','معركة بلاط الشهداء (تور)~the Battle of Tours|732|2','قيام الدولة العباسية~the founding of the Abbasid Caliphate|750|2','تأسيس مدينة بغداد~the founding of Baghdad|762|2','تتويج شارلمان إمبراطوراً~the coronation of Charlemagne|800|2','تأسيس مدينة القاهرة~the founding of Cairo|969|2',
+'الغزو النورماندي لإنجلترا~the Norman conquest of England|1066|2','معركة ملاذكرد~the Battle of Manzikert|1071|2','سيطرة الصليبيين على القدس~the crusaders’ capture of Jerusalem|1099|2','معركة حطين~the Battle of Hattin|1187|1','توقيع الماغنا كارتا~the signing of Magna Carta|1215|2','سقوط بغداد بيد المغول~the Mongol sack of Baghdad|1258|1','معركة عين جالوت~the Battle of Ain Jalut|1260|1','انتشار الطاعون الأسود في أوروبا~the arrival of the Black Death in Europe|1347|2','فتح القسطنطينية~the Ottoman conquest of Constantinople|1453|1','سقوط غرناطة~the fall of Granada|1492|1',
+'وصول فاسكو دا غاما إلى الهند~Vasco da Gama’s arrival in India|1498|2','أطروحات مارتن لوثر (بداية الإصلاح البروتستانتي)~Luther’s Ninety-five Theses|1517|2','انطلاق رحلة ماجلان حول العالم~the start of Magellan’s voyage|1519|2','معركة موهاكس~the Battle of Mohács|1526|3','حريق لندن الكبير~the Great Fire of London|1666|2','نشر نيوتن كتاب «المبادئ»~Newton’s publication of the Principia|1687|2','إعلان استقلال الولايات المتحدة~the US Declaration of Independence|1776|1','اندلاع الثورة الفرنسية~the start of the French Revolution|1789|1','حملة نابليون على مصر~Napoleon’s invasion of Egypt|1798|1','معركة واترلو~the Battle of Waterloo|1815|1',
+'افتتاح أول سكة حديد عامة للقاطرات البخارية~the opening of the first public steam railway|1825|3','نشر داروين «أصل الأنواع»~the publication of On the Origin of Species|1859|2','اندلاع الحرب الأهلية الأمريكية~the start of the American Civil War|1861|1','إلغاء العبودية في الولايات المتحدة~the abolition of slavery in the US|1865|2','افتتاح قناة السويس~the opening of the Suez Canal|1869|1','توحيد ألمانيا~the unification of Germany|1871|2','إهداء تمثال الحرية~the dedication of the Statue of Liberty|1886|2','اكتمال برج إيفل~the completion of the Eiffel Tower|1889|1','أول ألعاب أولمبية حديثة~the first modern Olympic Games|1896|1','استرداد الملك عبدالعزيز الرياض~King Abdulaziz’s recapture of Riyadh|1902|1',
+'أول طيران بطائرة ذات محرك~the first powered flight|1903|1','غرق سفينة تيتانيك~the sinking of the Titanic|1912|1','اندلاع الحرب العالمية الأولى~the outbreak of World War I|1914|1','الثورة الروسية~the Russian Revolution|1917|1','نهاية الحرب العالمية الأولى~the end of World War I|1918|1','معاهدة فرساي~the Treaty of Versailles|1919|2','اكتشاف مقبرة توت عنخ آمون~the discovery of Tutankhamun’s tomb|1922|1','إعلان الجمهورية التركية~the proclamation of the Republic of Turkey|1923|1','إلغاء الخلافة العثمانية~the abolition of the Ottoman Caliphate|1924|2','انهيار بورصة وول ستريت~the Wall Street Crash|1929|2',
+'أول كأس عالم لكرة القدم~the first FIFA World Cup|1930|1','افتتاح مبنى إمباير ستيت~the opening of the Empire State Building|1931|2','توحيد المملكة العربية السعودية~the unification of Saudi Arabia|1932|1','اكتشاف النفط تجارياً في السعودية (بئر الدمام 7)~the first commercial oil strike in Saudi Arabia|1938|1','اندلاع الحرب العالمية الثانية~the outbreak of World War II|1939|1','الهجوم على بيرل هاربر~the attack on Pearl Harbor|1941|1','إنزال النورماندي~the D-Day landings|1944|1','نهاية الحرب العالمية الثانية~the end of World War II|1945|1','استقلال الهند~the independence of India|1947|1','النكبة الفلسطينية~the Nakba|1948|1',
+'قيام جمهورية الصين الشعبية~the founding of the People’s Republic of China|1949|1','استقلال ليبيا~the independence of Libya|1951|3','ثورة يوليو في مصر~the Egyptian Revolution of July|1952|1','تأميم قناة السويس~the nationalization of the Suez Canal|1956|1','إطلاق القمر الصناعي سبوتنيك~the launch of Sputnik|1957|1','أول إنسان في الفضاء (غاغارين)~Gagarin’s first human spaceflight|1961|1','استقلال الجزائر~the independence of Algeria|1962|1','اغتيال جون كينيدي~the assassination of John F. Kennedy|1963|1','حرب الأيام الستة (النكسة)~the Six-Day War|1967|1','الهبوط على سطح القمر~the Moon landing|1969|1',
+'قيام دولة الإمارات~the formation of the UAE|1971|1','حرب أكتوبر~the October War|1973|1','افتتاح دار أوبرا سيدني~the opening of the Sydney Opera House|1973|2','أول رحلة تجارية لطائرة كونكورد~the first commercial Concorde flight|1976|2','الثورة الإيرانية~the Iranian Revolution|1979|1','كارثة تشيرنوبل~the Chernobyl disaster|1986|1','سقوط جدار برلين~the fall of the Berlin Wall|1989|1','إطلاق تلسكوب هابل~the launch of the Hubble Space Telescope|1990|2','تحرير الكويت~the liberation of Kuwait|1991|1','تفكك الاتحاد السوفيتي~the dissolution of the Soviet Union|1991|1',
+'انتخاب نيلسون مانديلا رئيساً~the election of Nelson Mandela as president|1994|1','افتتاح نفق المانش~the opening of the Channel Tunnel|1994|2','تأسيس شركة غوغل~the founding of Google|1998|1','هجمات 11 سبتمبر~the September 11 attacks|2001|1','دخول أوراق اليورو التداول~the introduction of euro banknotes|2002|1','تأسيس فيسبوك~the founding of Facebook|2004|1','إطلاق أول هاتف آيفون~the launch of the first iPhone|2007|1','افتتاح برج خليفة~the opening of the Burj Khalifa|2010|1','إطلاق رؤية السعودية 2030~the launch of Saudi Vision 2030|2016|1','إعلان جائحة كوفيد-19~the declaration of the COVID-19 pandemic|2020|1',
+'كأس العالم في قطر~the World Cup in Qatar|2022|1','أولمبياد لندن~the London Olympics|2012|1','أولمبياد بكين~the Beijing Olympics|2008|1','كأس العالم في جنوب أفريقيا~the World Cup in South Africa|2010|1','إعلان استقلال لبنان~the independence of Lebanon|1943|2','استقلال الأردن~the independence of Jordan|1946|2','استقلال الكويت~the independence of Kuwait|1961|2','استقلال المغرب~the independence of Morocco|1956|2','بناء جدار برلين~the construction of the Berlin Wall|1961|2','افتتاح قناة بنما~the opening of the Panama Canal|1914|2'
+];
+// person~en | country (English) | known for ar~en | tier
+var KB_PEOPLE=[
+'ألبرت أينشتاين~Albert Einstein|Germany|نظرية النسبية~the theory of relativity|1','إسحاق نيوتن~Isaac Newton|United Kingdom|قانون الجاذبية~the law of gravity|1','ماري كوري~Marie Curie|Poland|أبحاث النشاط الإشعاعي~research on radioactivity|1','تشارلز داروين~Charles Darwin|United Kingdom|نظرية التطور~the theory of evolution|1','غاليليو غاليلي~Galileo Galilei|Italy|الرصد الفلكي بالتلسكوب~telescopic astronomy|1','نيكولا تسلا~Nikola Tesla|Croatia|التيار المتردد~alternating current|1','ستيفن هوكينغ~Stephen Hawking|United Kingdom|أبحاث الثقوب السوداء~black-hole research|1','لويس باستير~Louis Pasteur|France|البسترة~pasteurization|1','ألكسندر فليمنغ~Alexander Fleming|United Kingdom|اكتشاف البنسلين~discovering penicillin|1','ديمتري مندلييف~Dmitri Mendeleev|Russia|الجدول الدوري~the periodic table|1',
+'يوري غاغارين~Yuri Gagarin|Russia|أول رحلة بشرية إلى الفضاء~the first human spaceflight|1','نيل أرمسترونغ~Neil Armstrong|United States|أول خطوة على القمر~the first step on the Moon|1','كريستوفر كولومبوس~Christopher Columbus|Italy|الوصول إلى الأمريكتين~reaching the Americas|1','فاسكو دا غاما~Vasco da Gama|Portugal|الطريق البحري إلى الهند~the sea route to India|1','ماركو بولو~Marco Polo|Italy|رحلته إلى الصين~his journey to China|1','ابن بطوطة~Ibn Battuta|Morocco|الرحلات حول العالم الإسلامي~travels across the Muslim world|1','روالد أموندسن~Roald Amundsen|Norway|الوصول إلى القطب الجنوبي~reaching the South Pole|2','إدموند هيلاري~Edmund Hillary|New Zealand|تسلق قمة إيفرست أولاً~the first ascent of Everest|2','جاك كوستو~Jacques Cousteau|France|استكشاف المحيطات~ocean exploration|2','جيمس كوك~James Cook|United Kingdom|رسم خرائط المحيط الهادئ~charting the Pacific|2',
+'ليوناردو دافنشي~Leonardo da Vinci|Italy|لوحة الموناليزا~the Mona Lisa|1','فينسنت فان غوخ~Vincent van Gogh|Netherlands|لوحة ليلة النجوم~The Starry Night|1','بابلو بيكاسو~Pablo Picasso|Spain|المدرسة التكعيبية~Cubism|1','سلفادور دالي~Salvador Dalí|Spain|الفن السريالي~Surrealist art|1','كلود مونيه~Claude Monet|France|المدرسة الانطباعية~Impressionism|1','مايكل أنجلو~Michelangelo|Italy|سقف كنيسة سيستينا~the Sistine Chapel ceiling|1','لودفيغ فان بيتهوفن~Ludwig van Beethoven|Germany|السيمفونية التاسعة~the Ninth Symphony|1','فولفغانغ أماديوس موتسارت~Wolfgang Amadeus Mozart|Austria|أوبرا الناي السحري~The Magic Flute|1','ويليام شكسبير~William Shakespeare|United Kingdom|مسرحية هاملت~Hamlet|1','فيكتور هوغو~Victor Hugo|France|رواية البؤساء~Les Misérables|1',
+'نجيب محفوظ~Naguib Mahfouz|Egypt|أول عربي يفوز بنوبل للآداب~the first Arab Nobel laureate in literature|1','أم كلثوم~Umm Kulthum|Egypt|الغناء العربي~Arabic singing|1','جبران خليل جبران~Kahlil Gibran|Lebanon|كتاب «النبي»~the book The Prophet|1','طه حسين~Taha Hussein|Egypt|لقب عميد الأدب العربي~the title Dean of Arabic Literature|1','أحمد زويل~Ahmed Zewail|Egypt|كيمياء الفيمتو~femtochemistry|1','ابن سينا~Avicenna|Uzbekistan|كتاب القانون في الطب~The Canon of Medicine|1','ابن خلدون~Ibn Khaldun|Tunisia|علم الاجتماع والمقدمة~sociology and the Muqaddimah|1','الخوارزمي~Al-Khwarizmi|Uzbekistan|علم الجبر~algebra|1','ابن الهيثم~Ibn al-Haytham|Iraq|علم البصريات~optics|1','الزهراوي~Al-Zahrawi|Spain|الجراحة~surgery|2',
+'المهاتما غاندي~Mahatma Gandhi|India|المقاومة السلمية~non-violent resistance|1','نيلسون مانديلا~Nelson Mandela|South Africa|إنهاء الفصل العنصري~ending apartheid|1','مارتن لوثر كينغ~Martin Luther King Jr.|United States|الحقوق المدنية~civil rights|1','أبراهام لينكولن~Abraham Lincoln|United States|إلغاء العبودية~abolishing slavery|1','نابليون بونابرت~Napoleon Bonaparte|France|الإمبراطورية الفرنسية~the French Empire|1','ونستون تشرشل~Winston Churchill|United Kingdom|قيادة بريطانيا في الحرب العالمية الثانية~leading Britain in WWII|1','مصطفى كمال أتاتورك~Mustafa Kemal Atatürk|Greece|تأسيس الجمهورية التركية~founding modern Turkey|1','محمد علي جناح~Muhammad Ali Jinnah|Pakistan|تأسيس باكستان~founding Pakistan|1','جمال عبد الناصر~Gamal Abdel Nasser|Egypt|تأميم قناة السويس~nationalizing the Suez Canal|1','الملك عبدالعزيز آل سعود~King Abdulaziz Al Saud|Saudi Arabia|توحيد المملكة العربية السعودية~unifying Saudi Arabia|1',
+'صلاح الدين الأيوبي~Saladin|Iraq|استعادة القدس~retaking Jerusalem|1','محمد الفاتح~Mehmed the Conqueror|Turkey|فتح القسطنطينية~conquering Constantinople|1','سليمان القانوني~Suleiman the Magnificent|Turkey|العصر الذهبي العثماني~the Ottoman golden age|1','جنكيز خان~Genghis Khan|Mongolia|تأسيس الإمبراطورية المغولية~founding the Mongol Empire|1','الإسكندر الأكبر~Alexander the Great|Greece|فتوحات الشرق~conquests across Asia|1','يوليوس قيصر~Julius Caesar|Italy|حكم روما~ruling Rome|1','كليوباترا~Cleopatra|Egypt|آخر ملوك البطالمة~the last Ptolemaic ruler|1','أرسطو~Aristotle|Greece|الفلسفة والمنطق~philosophy and logic|1','سقراط~Socrates|Greece|الفلسفة بالحوار~philosophy through dialogue|1','كونفوشيوس~Confucius|China|الفلسفة الأخلاقية الصينية~Chinese moral philosophy|1',
+'بيليه~Pelé|Brazil|كرة القدم~football|1','دييغو مارادونا~Diego Maradona|Argentina|كرة القدم~football|1','ليونيل ميسي~Lionel Messi|Argentina|كرة القدم~football|1','كريستيانو رونالدو~Cristiano Ronaldo|Portugal|كرة القدم~football|1','محمد صلاح~Mohamed Salah|Egypt|كرة القدم~football|1','زين الدين زيدان~Zinedine Zidane|France|كرة القدم~football|1','يوهان كرويف~Johan Cruyff|Netherlands|كرة القدم~football|2','مايكل جوردان~Michael Jordan|United States|كرة السلة~basketball|1','محمد علي كلاي~Muhammad Ali|United States|الملاكمة~boxing|1','يوسين بولت~Usain Bolt|Jamaica|العدو السريع~sprinting|1',
+'روجر فيدرر~Roger Federer|Switzerland|التنس~tennis|1','رافاييل نادال~Rafael Nadal|Spain|التنس~tennis|1','نوفاك ديوكوفيتش~Novak Djokovic|Serbia|التنس~tennis|1','مايكل فيلبس~Michael Phelps|United States|السباحة~swimming|1','مايكل شوماخر~Michael Schumacher|Germany|سباقات الفورمولا 1~Formula One|1','لويس هاميلتون~Lewis Hamilton|United Kingdom|سباقات الفورمولا 1~Formula One|1','تايغر وودز~Tiger Woods|United States|الغولف~golf|1','سيرينا ويليامز~Serena Williams|United States|التنس~tennis|1','ماجد عبدالله~Majed Abdullah|Saudi Arabia|كرة القدم~football|1','هشام الكروج~Hicham El Guerrouj|Morocco|ألعاب القوى~athletics|2',
+'ستيف جوبز~Steve Jobs|United States|تأسيس شركة آبل~co-founding Apple|1','بيل غيتس~Bill Gates|United States|تأسيس مايكروسوفت~co-founding Microsoft|1','مارك زوكربيرغ~Mark Zuckerberg|United States|تأسيس فيسبوك~co-founding Facebook|1','تيم بيرنرز-لي~Tim Berners-Lee|United Kingdom|اختراع الشبكة العنكبوتية~inventing the World Wide Web|1','هنري فورد~Henry Ford|United States|خط التجميع للسيارات~the car assembly line|1','والت ديزني~Walt Disney|United States|أفلام الرسوم المتحركة~animated films|1','تشارلي تشابلن~Charlie Chaplin|United Kingdom|الأفلام الصامتة~silent films|1','ألفريد نوبل~Alfred Nobel|Sweden|جوائز نوبل~the Nobel Prizes|1','زها حديد~Zaha Hadid|Iraq|العمارة~architecture|1','فاروق الباز~Farouk El-Baz|Egypt|أبحاث الفضاء مع ناسا~space research with NASA|2'
+];
+// club~en | city~en | country (English) | stadium~en (may be empty) | tier
+var KB_CLUBS=[
+'ريال مدريد~Real Madrid|مدريد~Madrid|Spain|سانتياغو برنابيو~Santiago Bernabéu|1','برشلونة~FC Barcelona|برشلونة~Barcelona|Spain|كامب نو~Camp Nou|1','أتلتيكو مدريد~Atlético Madrid|مدريد~Madrid|Spain|ميتروبوليتانو~Metropolitano|1','إشبيلية~Sevilla FC|إشبيلية~Seville|Spain|رامون سانشيز بيزخوان~Ramón Sánchez Pizjuán|2','فالنسيا~Valencia CF|فالنسيا~Valencia|Spain|ميستايا~Mestalla|2','أتلتيك بلباو~Athletic Bilbao|بلباو~Bilbao|Spain|سان ماميس~San Mamés|2','ريال بيتيس~Real Betis|إشبيلية~Seville|Spain|بينيتو فيامارين~Benito Villamarín|3','فياريال~Villarreal|فياريال~Villarreal|Spain|لا سيراميكا~La Cerámica|3',
+'مانشستر يونايتد~Manchester United|مانشستر~Manchester|United Kingdom|أولد ترافورد~Old Trafford|1','مانشستر سيتي~Manchester City|مانشستر~Manchester|United Kingdom|ملعب الاتحاد~Etihad Stadium|1','ليفربول~Liverpool|ليفربول~Liverpool|United Kingdom|آنفيلد~Anfield|1','أرسنال~Arsenal|لندن~London|United Kingdom|ملعب الإمارات~Emirates Stadium|1','تشيلسي~Chelsea|لندن~London|United Kingdom|ستامفورد بريدج~Stamford Bridge|1','توتنهام~Tottenham Hotspur|لندن~London|United Kingdom||1','إيفرتون~Everton|ليفربول~Liverpool|United Kingdom||2','نيوكاسل يونايتد~Newcastle United|نيوكاسل~Newcastle|United Kingdom|سانت جيمس بارك~St James’ Park|2','أستون فيلا~Aston Villa|برمنغهام~Birmingham|United Kingdom|فيلا بارك~Villa Park|2','وست هام~West Ham United|لندن~London|United Kingdom||2','سلتيك~Celtic|غلاسكو~Glasgow|United Kingdom|سلتيك بارك~Celtic Park|2','رينجرز~Rangers|غلاسكو~Glasgow|United Kingdom|إيبروكس~Ibrox|2',
+'بايرن ميونخ~Bayern Munich|ميونخ~Munich|Germany|أليانز أرينا~Allianz Arena|1','بوروسيا دورتموند~Borussia Dortmund|دورتموند~Dortmund|Germany|سيغنال إيدونا بارك~Signal Iduna Park|1','باير ليفركوزن~Bayer Leverkusen|ليفركوزن~Leverkusen|Germany||2','شالكه~Schalke 04|غلزنكيرشن~Gelsenkirchen|Germany|فيلتينس أرينا~Veltins-Arena|2','لايبزيغ~RB Leipzig|لايبزيغ~Leipzig|Germany||2','هامبورغ~Hamburger SV|هامبورغ~Hamburg|Germany||3','آينتراخت فرانكفورت~Eintracht Frankfurt|فرانكفورت~Frankfurt|Germany||2',
+'يوفنتوس~Juventus|تورينو~Turin|Italy|أليانز ستاديوم~Allianz Stadium|1','إيه سي ميلان~AC Milan|ميلانو~Milan|Italy|سان سيرو~San Siro|1','إنتر ميلان~Inter Milan|ميلانو~Milan|Italy|سان سيرو~San Siro|1','روما~AS Roma|روما~Rome|Italy|الملعب الأولمبي~Stadio Olimpico|1','لاتسيو~Lazio|روما~Rome|Italy|الملعب الأولمبي~Stadio Olimpico|2','نابولي~Napoli|نابولي~Naples|Italy|دييغو أرماندو مارادونا~Stadio Diego Armando Maradona|1','فيورنتينا~Fiorentina|فلورنسا~Florence|Italy||2','أتالانتا~Atalanta|بيرغامو~Bergamo|Italy||3',
+'باريس سان جيرمان~Paris Saint-Germain|باريس~Paris|France|حديقة الأمراء~Parc des Princes|1','أولمبيك مارسيليا~Olympique de Marseille|مرسيليا~Marseille|France|فيلودروم~Vélodrome|1','أولمبيك ليون~Olympique Lyonnais|ليون~Lyon|France||2','موناكو~AS Monaco|موناكو~Monaco|France|لويس الثاني~Stade Louis II|2','ليل~Lille OSC|ليل~Lille|France||3',
+'أياكس~Ajax|أمستردام~Amsterdam|Netherlands|يوهان كرويف أرينا~Johan Cruyff Arena|1','بي إس في أيندهوفن~PSV Eindhoven|أيندهوفن~Eindhoven|Netherlands||2','فينورد~Feyenoord|روتردام~Rotterdam|Netherlands|دي كويب~De Kuip|2','بنفيكا~Benfica|لشبونة~Lisbon|Portugal|ملعب النور~Estádio da Luz|1','بورتو~FC Porto|بورتو~Porto|Portugal|دراغاو~Estádio do Dragão|1','سبورتينغ لشبونة~Sporting CP|لشبونة~Lisbon|Portugal||2',
+'غلطة سراي~Galatasaray|إسطنبول~Istanbul|Turkey||1','فنربخشة~Fenerbahçe|إسطنبول~Istanbul|Turkey||1','بشكتاش~Beşiktaş|إسطنبول~Istanbul|Turkey||2','أولمبياكوس~Olympiacos|بيرايوس~Piraeus|Greece||2','باناثينايكوس~Panathinaikos|أثينا~Athens|Greece||3','دينامو كييف~Dynamo Kyiv|كييف~Kyiv|Ukraine||2','شاختار دونيتسك~Shakhtar Donetsk|دونيتسك~Donetsk|Ukraine||3','زينيت~Zenit|سانت بطرسبرغ~Saint Petersburg|Russia||3','كلوب بروج~Club Brugge|بروج~Bruges|Belgium||3','أندرلخت~Anderlecht|بروكسل~Brussels|Belgium||3',
+'الهلال~Al Hilal|الرياض~Riyadh|Saudi Arabia|المملكة أرينا~Kingdom Arena|1','النصر~Al Nassr|الرياض~Riyadh|Saudi Arabia|الأول بارك~Al-Awwal Park|1','الاتحاد~Al Ittihad|جدة~Jeddah|Saudi Arabia||1','الأهلي السعودي~Al Ahli (Saudi)|جدة~Jeddah|Saudi Arabia||1','الشباب~Al Shabab|الرياض~Riyadh|Saudi Arabia||1','الاتفاق~Al Ettifaq|الدمام~Dammam|Saudi Arabia||1','التعاون~Al Taawoun|بريدة~Buraidah|Saudi Arabia||2','الفتح~Al Fateh|الأحساء~Al-Ahsa|Saudi Arabia||2',
+'الأهلي المصري~Al Ahly|القاهرة~Cairo|Egypt||1','الزمالك~Zamalek|القاهرة~Cairo|Egypt||1','الترجي~Espérance de Tunis|تونس~Tunis|Tunisia||1','النجم الساحلي~Étoile du Sahel|سوسة~Sousse|Tunisia||2','الرجاء~Raja Casablanca|الدار البيضاء~Casablanca|Morocco||1','الوداد~Wydad Casablanca|الدار البيضاء~Casablanca|Morocco||1','مولودية الجزائر~MC Alger|الجزائر~Algiers|Algeria||2','العين~Al Ain FC|العين~Al Ain|United Arab Emirates||1','السد~Al Sadd|الدوحة~Doha|Qatar||1','القادسية الكويتي~Qadsia SC|مدينة الكويت~Kuwait City|Kuwait||2','الزوراء~Al-Zawraa|بغداد~Baghdad|Iraq||2','الفيصلي الأردني~Al-Faisaly (Jordan)|عمّان~Amman|Jordan||2',
+'بوكا جونيورز~Boca Juniors|بوينس آيرس~Buenos Aires|Argentina|لا بومبونيرا~La Bombonera|1','ريفر بليت~River Plate|بوينس آيرس~Buenos Aires|Argentina|مونومنتال~Monumental|1','فلامنغو~Flamengo|ريو دي جانيرو~Rio de Janeiro|Brazil|ماراكانا~Maracanã|1','سانتوس~Santos FC|سانتوس~Santos|Brazil||2','بالميراس~Palmeiras|ساو باولو~São Paulo|Brazil||2','كورينثيانز~Corinthians|ساو باولو~São Paulo|Brazil||2','إنتر ميامي~Inter Miami|ميامي~Miami|United States||1','لوس أنجلوس غالاكسي~LA Galaxy|لوس أنجلوس~Los Angeles|United States||2','كلوب أمريكا~Club América|مكسيكو سيتي~Mexico City|Mexico|ملعب أزتيكا~Estadio Azteca|2','أوراوا ريد دايموندز~Urawa Red Diamonds|سايتاما~Saitama|Japan||2'
+];
+// feature~en | type (M mountain, R river, L lake, D desert, I island, W waterfall) | continent | country (English, may be empty) | measure (m height / km length / 1000 km2 area / m drop) | tier
+var KB_NATURE=[
+'إيفرست~Mount Everest|M|AS||8849|1','كي 2~K2|M|AS||8611|2','كانشينجونغا~Kangchenjunga|M|AS||8586|3','أكونكاغوا~Aconcagua|M|SA|Argentina|6961|2','دينالي~Denali|M|NA|United States|6190|2','كليمنجارو~Kilimanjaro|M|AF|Tanzania|5895|1','إلبروس~Mount Elbrus|M|EU|Russia|5642|2','مون بلان~Mont Blanc|M|EU||4806|2','الماترهورن~the Matterhorn|M|EU||4478|2','جبل فوجي~Mount Fuji|M|AS|Japan|3776|1','جبل كينيا~Mount Kenya|M|AF|Kenya|5199|2','جبل توبقال~Toubkal|M|AF|Morocco|4167|2','جبل الشيخ~Mount Hermon|M|AS||2814|2','جبل السودة~Jabal Sawda|M|AS|Saudi Arabia|3000|2','جبل النبي شعيب~Jabal an-Nabi Shu’ayb|M|AS|Yemen|3666|2','جبل كوسيوسكو~Mount Kosciuszko|M|OC|Australia|2228|3','جبل سيناء (جبل موسى)~Mount Sinai|M|AF|Egypt|2285|2','جبل أرارات~Mount Ararat|M|AS|Turkey|5137|2','جبل إتنا~Mount Etna|M|EU|Italy|3357|2','جبل فيزوف~Mount Vesuvius|M|EU|Italy|1281|2',
+'النيل~the Nile|R|AF||6650|1','الأمازون~the Amazon|R|SA||6400|1','اليانغتسي~the Yangtze|R|AS|China|6300|2','المسيسيبي~the Mississippi|R|NA|United States|3730|2','النهر الأصفر~the Yellow River|R|AS|China|5464|2','الكونغو~the Congo River|R|AF||4700|2','النيجر~the Niger River|R|AF||4180|3','الميكونغ~the Mekong|R|AS||4350|2','الفولغا~the Volga|R|EU|Russia|3530|2','الدانوب~the Danube|R|EU||2850|1','الراين~the Rhine|R|EU||1230|2','الفرات~the Euphrates|R|AS||2800|1','دجلة~the Tigris|R|AS||1850|1','الغانج~the Ganges|R|AS||2525|2','السين~the Seine|R|EU|France|777|1','التايمز~the Thames|R|EU|United Kingdom|346|1','نهر الأردن~the Jordan River|R|AS||251|2','العاصي~the Orontes|R|AS||571|3','السند~the Indus|R|AS||3180|2','الزامبيزي~the Zambezi|R|AF||2574|3',
+'بحر قزوين~the Caspian Sea|L|AS||371|1','بحيرة سوبيريور~Lake Superior|L|NA||82|2','بحيرة فيكتوريا~Lake Victoria|L|AF||59.9|1','بحيرة بايكال~Lake Baikal|L|AS|Russia|31.5|2','بحيرة تنجانيقا~Lake Tanganyika|L|AF||32.9|3','بحيرة ميشيغان~Lake Michigan|L|NA|United States|58|2','بحيرة جنيف~Lake Geneva|L|EU||0.58|2','بحيرة تيتيكاكا~Lake Titicaca|L|SA||8.4|2','البحر الميت~the Dead Sea|L|AS||0.6|1','بحيرة ناصر~Lake Nasser|L|AF||5.25|2',
+'الصحراء الكبرى~the Sahara|D|AF||9200|1','صحراء غوبي~the Gobi Desert|D|AS||1295|1','الربع الخالي~the Rub’ al Khali|D|AS||650|1','صحراء كالاهاري~the Kalahari Desert|D|AF||900|2','صحراء أتاكاما~the Atacama Desert|D|SA|Chile|105|2','صحراء النفود~the Nafud Desert|D|AS|Saudi Arabia|65|2','صحراء موهافي~the Mojave Desert|D|NA|United States|124|3','صحراء ثار~the Thar Desert|D|AS||200|3','صحراء سونورا~the Sonoran Desert|D|NA||260|3','صحراء ناميب~the Namib Desert|D|AF|Namibia|81|3',
+'غرينلاند~Greenland|I|NA||2166|1','غينيا الجديدة~New Guinea|I|OC||786|2','بورنيو~Borneo|I|AS||743|2','مدغشقر~Madagascar|I|AF|Madagascar|587|1','سومطرة~Sumatra|I|AS|Indonesia|473|2','جزيرة بريطانيا العظمى~Great Britain|I|EU|United Kingdom|209|1','آيسلندا~Iceland|I|EU|Iceland|103|2','صقلية~Sicily|I|EU|Italy|25.7|1','كريت~Crete|I|EU|Greece|8.3|2','قبرص~Cyprus (island)|I|||9.25|2','سقطرى~Socotra|I|AS|Yemen|3.8|2','بالي~Bali|I|AS|Indonesia|5.8|1','جزيرة الشمال (نيوزيلندا)~North Island|I|OC|New Zealand|113|3','هوكايدو~Hokkaido|I|AS|Japan|78|2','سريلانكا~Sri Lanka (island)|I|AS|Sri Lanka|65.6|2',
+'شلالات أنخل~Angel Falls|W|SA|Venezuela|979|1','شلالات نياغارا~Niagara Falls|W|NA||51|1','شلالات فيكتوريا~Victoria Falls|W|AF||108|1','شلالات إغوازو~Iguazú Falls|W|SA||82|2','شلالات توجيلا~Tugela Falls|W|AF|South Africa|948|3'
+];
+// dish~en | country (English) | tier
+var KB_DISHES=[
+'الكبسة~kabsa|Saudi Arabia|1','الجريش~jareesh|Saudi Arabia|2','المندي~mandi|Yemen|1','السلتة~saltah|Yemen|1','الكشري~koshari|Egypt|1','الملوخية بالأرانب~molokhia with rabbit|Egypt|2','المنسف~mansaf|Jordan|1','الكبة النيئة~kibbeh nayyeh|Lebanon|2','التبولة~tabbouleh|Lebanon|1','الكسكس~couscous|Morocco|1','الطاجين~tagine|Morocco|1','البسطيلة~pastilla|Morocco|2','البريك~brik|Tunisia|2','المسقوف~masgouf|Iraq|1','الدولمة العراقية~Iraqi dolma|Iraq|2','المجبوس~machboos|Kuwait|1','الهريس~harees|United Arab Emirates|2','الشوا العماني~shuwa|Oman|1','الكباب الحلبي~Aleppo kebab|Syria|2',
+'السوشي~sushi|Japan|1','الرامن~ramen|Japan|1','التيمبورا~tempura|Japan|2','الكيمتشي~kimchi|South Korea|1','البيبيمباب~bibimbap|South Korea|2','بط بكين~Peking duck|China|1','الديم سم~dim sum|China|2','الفو~pho|Vietnam|1','باد تاي~pad thai|Thailand|1','توم يم~tom yum|Thailand|2','الرندانغ~rendang|Indonesia|2','ناسي غورينغ~nasi goreng|Indonesia|2','البرياني~biryani|India|1','الدال~dal|India|2','التندوري~tandoori chicken|India|1','النهاري~nihari|Pakistan|2','البلو (الأرز الأوزبكي)~plov|Uzbekistan|2','الكباب الأضنة~Adana kebab|Turkey|2','البقلاوة التركية~Turkish baklava|Turkey|1','الإسكندر كباب~İskender kebap|Turkey|2',
+'البيتزا~pizza|Italy|1','الريزوتو~risotto|Italy|2','اللازانيا~lasagna|Italy|1','التيراميسو~tiramisu|Italy|1','الباييلا~paella|Spain|1','الغازباتشو~gazpacho|Spain|2','التورتيلا الإسبانية~Spanish tortilla|Spain|2','الكرواسون~croissant|France|1','الراتاتوي~ratatouille|France|2','الكريب~crêpe|France|1','السمك والبطاطا~fish and chips|United Kingdom|1','الهاغيس~haggis|United Kingdom|2','الشنيتزل~Wiener schnitzel|Austria|1','النقانق والملفوف المخلل~sauerkraut|Germany|2','البريتزل~pretzel|Germany|1','الغولاش~goulash|Hungary|1','الفوندو~fondue|Switzerland|1','البورش~borscht|Ukraine|2','البيروغي~pierogi|Poland|2','الموساكا~moussaka|Greece|1',
+'الهمبرغر~hamburger|United States|1','التاكو~tacos|Mexico|1','الغواكامولي~guacamole|Mexico|1','الفيجوادا~feijoada|Brazil|2','الأسادو~asado|Argentina|2','السيفيتشي~ceviche|Peru|2','البوتين~poutine|Canada|2','الإنجيرا~injera|Ethiopia|1','الجولوف~jollof rice|Nigeria|2','البوبوتي~bobotie|South Africa|3'
+];
+// company / brand ~en | country (English) | tier
+var KB_COMPANIES=[
+'تويوتا~Toyota|Japan|1','هوندا~Honda|Japan|1','سوني~Sony|Japan|1','نينتندو~Nintendo|Japan|1','نيسان~Nissan|Japan|1','باناسونيك~Panasonic|Japan|2','كانون~Canon|Japan|2','سامسونغ~Samsung|South Korea|1','هيونداي~Hyundai|South Korea|1','إل جي~LG|South Korea|1','كيا~Kia|South Korea|1','هواوي~Huawei|China|1','شاومي~Xiaomi|China|1','علي بابا~Alibaba|China|1','لينوفو~Lenovo|China|2','تينسنت~Tencent|China|2',
+'فولكس فاغن~Volkswagen|Germany|1','بي إم دبليو~BMW|Germany|1','مرسيدس-بنز~Mercedes-Benz|Germany|1','أديداس~Adidas|Germany|1','بوما~Puma|Germany|1','سيمنس~Siemens|Germany|1','بورشه~Porsche|Germany|1','أودي~Audi|Germany|1','فيراري~Ferrari|Italy|1','لامبورغيني~Lamborghini|Italy|1','فيات~Fiat|Italy|1','غوتشي~Gucci|Italy|2','برادا~Prada|Italy|2','نوتيلا (فيريرو)~Ferrero|Italy|2','رينو~Renault|France|1','بيجو~Peugeot|France|1','لوريال~L’Oréal|France|2','لويس فيتون~Louis Vuitton|France|2','شانيل~Chanel|France|2','إيرباص~Airbus|France|2',
+'إيكيا~IKEA|Sweden|1','فولفو~Volvo|Sweden|1','إتش آند إم~H&M|Sweden|2','سبوتيفاي~Spotify|Sweden|2','نوكيا~Nokia|Finland|1','ليغو~LEGO|Denmark|1','نستله~Nestlé|Switzerland|1','رولكس~Rolex|Switzerland|1','زارا (إنديتكس)~Zara|Spain|1','فيليبس~Philips|Netherlands|1','هاينكن~Heineken|Netherlands|2','شل~Shell|United Kingdom|2','رولز رويس~Rolls-Royce|United Kingdom|1','جاكوار~Jaguar|United Kingdom|2','أستون مارتن~Aston Martin|United Kingdom|2','بي بي~BP|United Kingdom|2',
+'أبل~Apple|United States|1','مايكروسوفت~Microsoft|United States|1','غوغل~Google|United States|1','أمازون~Amazon|United States|1','تسلا~Tesla|United States|1','نايكي~Nike|United States|1','كوكاكولا~Coca-Cola|United States|1','ماكدونالدز~McDonald’s|United States|1','بوينغ~Boeing|United States|1','فورد~Ford|United States|1','إنتل~Intel|United States|2','نتفليكس~Netflix|United States|1','ستاربكس~Starbucks|United States|1',
+'أرامكو~Saudi Aramco|Saudi Arabia|1','سابك~SABIC|Saudi Arabia|1','المراعي~Almarai|Saudi Arabia|1','طيران الإمارات~Emirates|United Arab Emirates|1','الاتحاد للطيران~Etihad Airways|United Arab Emirates|1','إعمار~Emaar|United Arab Emirates|2','الخطوط الجوية القطرية~Qatar Airways|Qatar|1','الخطوط التركية~Turkish Airlines|Turkey|1','بيكو~Beko|Turkey|2','تاتا~Tata|India|2','إنفوسيس~Infosys|India|3','بلاك بيري~BlackBerry|Canada|2','شوبيفاي~Shopify|Canada|3','إمبراير~Embraer|Brazil|3'
+];
+// element~en | symbol | atomic number | kind (metal, nonmetal, noble, metalloid) | tier
+var KB_ELEMENTS=[
+'الهيدروجين~hydrogen|H|1|nonmetal|1','الهيليوم~helium|He|2|noble|1','الليثيوم~lithium|Li|3|metal|2','الكربون~carbon|C|6|nonmetal|1','النيتروجين~nitrogen|N|7|nonmetal|1','الأكسجين~oxygen|O|8|nonmetal|1','الفلور~fluorine|F|9|nonmetal|2','النيون~neon|Ne|10|noble|1','الصوديوم~sodium|Na|11|metal|1','المغنيسيوم~magnesium|Mg|12|metal|2',
+'الألومنيوم~aluminium|Al|13|metal|1','السيليكون~silicon|Si|14|metalloid|2','الفوسفور~phosphorus|P|15|nonmetal|2','الكبريت~sulfur|S|16|nonmetal|1','الكلور~chlorine|Cl|17|nonmetal|1','الأرغون~argon|Ar|18|noble|2','البوتاسيوم~potassium|K|19|metal|1','الكالسيوم~calcium|Ca|20|metal|1','التيتانيوم~titanium|Ti|22|metal|2','الكروم~chromium|Cr|24|metal|2',
+'الحديد~iron|Fe|26|metal|1','الكوبالت~cobalt|Co|27|metal|3','النيكل~nickel|Ni|28|metal|2','النحاس~copper|Cu|29|metal|1','الزنك~zinc|Zn|30|metal|1','الزرنيخ~arsenic|As|33|metalloid|3','البروم~bromine|Br|35|nonmetal|3','الكريبتون~krypton|Kr|36|noble|2','الفضة~silver|Ag|47|metal|1','القصدير~tin|Sn|50|metal|1',
+'اليود~iodine|I|53|nonmetal|2','الزينون~xenon|Xe|54|noble|2','الباريوم~barium|Ba|56|metal|3','التنغستن~tungsten|W|74|metal|2','البلاتين~platinum|Pt|78|metal|1','الذهب~gold|Au|79|metal|1','الزئبق~mercury|Hg|80|metal|1','الرصاص~lead|Pb|82|metal|1','الرادون~radon|Rn|86|noble|3','اليورانيوم~uranium|U|92|metal|1','البلوتونيوم~plutonium|Pu|94|metal|2','الراديوم~radium|Ra|88|metal|2','الجرمانيوم~germanium|Ge|32|metalloid|3','البورون~boron|B|5|metalloid|3','المنغنيز~manganese|Mn|25|metal|3'
+];
+
+// ===== Knowledge-base question engine: Arabic + English questions built from the fact tables =====
+var KB_PLANETS=['عطارد~Mercury|1|0','الزهرة~Venus|2|0','الأرض~Earth|3|1','المريخ~Mars|4|2','المشتري~Jupiter|5|95','زحل~Saturn|6|146','أورانوس~Uranus|7|28','نبتون~Neptune|8|16'];
+var KB_ISO={'Saudi Arabia':'SA','Egypt':'EG','United Arab Emirates':'AE','Kuwait':'KW','Qatar':'QA','Bahrain':'BH','Oman':'OM','Yemen':'YE','Iraq':'IQ','Jordan':'JO','Syria':'SY','Lebanon':'LB','Libya':'LY','Tunisia':'TN','Algeria':'DZ','Morocco':'MA','Mauritania':'MR','Sudan':'SD','Somalia':'SO','Djibouti':'DJ','Comoros':'KM','Turkey':'TR','Iran':'IR','Afghanistan':'AF','Pakistan':'PK','India':'IN','Bangladesh':'BD','Sri Lanka':'LK','Nepal':'NP','China':'CN','Japan':'JP','South Korea':'KR','North Korea':'KP','Mongolia':'MN','Indonesia':'ID','Malaysia':'MY','Singapore':'SG','Thailand':'TH','Vietnam':'VN','Philippines':'PH','Cambodia':'KH','Laos':'LA','Myanmar':'MM','Kazakhstan':'KZ','Uzbekistan':'UZ','Turkmenistan':'TM','Kyrgyzstan':'KG','Tajikistan':'TJ','Azerbaijan':'AZ','Georgia':'GE','Armenia':'AM','United Kingdom':'GB','France':'FR','Germany':'DE','Italy':'IT','Spain':'ES','Portugal':'PT','Netherlands':'NL','Belgium':'BE','Switzerland':'CH','Austria':'AT','Poland':'PL','Czech Republic':'CZ','Hungary':'HU','Romania':'RO','Bulgaria':'BG','Greece':'GR','Sweden':'SE','Norway':'NO','Denmark':'DK','Finland':'FI','Iceland':'IS','Ireland':'IE','Russia':'RU','Ukraine':'UA','Belarus':'BY','Serbia':'RS','Croatia':'HR','Bosnia and Herzegovina':'BA','Albania':'AL','Slovakia':'SK','Slovenia':'SI','Estonia':'EE','Latvia':'LV','Lithuania':'LT','Malta':'MT','Luxembourg':'LU','Cyprus':'CY','Nigeria':'NG','Ethiopia':'ET','Kenya':'KE','Tanzania':'TZ','Uganda':'UG','Rwanda':'RW','South Africa':'ZA','Ghana':'GH','Senegal':'SN','Ivory Coast':'CI','Cameroon':'CM','DR Congo':'CD','Angola':'AO','Mozambique':'MZ','Zambia':'ZM','Zimbabwe':'ZW','Madagascar':'MG','Namibia':'NA','Botswana':'BW','Mali':'ML','Niger':'NE','Chad':'TD','Eritrea':'ER','United States':'US','Canada':'CA','Mexico':'MX','Cuba':'CU','Jamaica':'JM','Panama':'PA','Costa Rica':'CR','Guatemala':'GT','Haiti':'HT','Brazil':'BR','Argentina':'AR','Chile':'CL','Peru':'PE','Colombia':'CO','Venezuela':'VE','Ecuador':'EC','Bolivia':'BO','Paraguay':'PY','Uruguay':'UY','Australia':'AU','New Zealand':'NZ','Fiji':'FJ','Papua New Guinea':'PG'};
+var KB_CONT={AS:['آسيا','Asia'],AF:['أفريقيا','Africa'],EU:['أوروبا','Europe'],NA:['أمريكا الشمالية','North America'],SA:['أمريكا الجنوبية','South America'],OC:['أوقيانوسيا','Oceania']};
+var KB_CLASS1={M:'a mammal',B:'a bird',R:'a reptile',A:'an amphibian',F:'a fish',I:'an insect',S:'an arachnid',L:'a mollusc',C:'a crustacean'};
+var KB_CLASS={M:['الثدييات','mammals'],B:['الطيور','birds'],R:['الزواحف','reptiles'],A:['البرمائيات','amphibians'],F:['الأسماك','fish'],I:['الحشرات','insects'],S:['العنكبيات','arachnids'],L:['الرخويات','molluscs'],C:['القشريات','crustaceans']};
+var KB_DIET={H:['عاشب (نباتات)','herbivore (plants)'],C:['لاحم (لحوم)','carnivore (meat)'],O:['قارت (نباتات ولحوم)','omnivore (plants and meat)']};
+var KB_KIND={metal:['فلز','a metal'],nonmetal:['لا فلز','a non-metal'],noble:['غاز نبيل','a noble gas'],metalloid:['شبه فلز','a metalloid']};
+var KB_CATS={geo:['جغرافيا','Geography'],sci:['علوم','Science'],his:['تاريخ','History'],spo:['رياضة','Sports'],cul:['ثقافة وفنون','Culture & Arts'],gen:['عامة','General']};
+var KBQ=null;
+function kbBuild(){
+  if(KBQ)return KBQ;
+  var R=(function(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};})(77001);
+  function ri(n){return Math.floor(R()*n);}
+  function shf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=ri(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  function bi(s){var p=(s||'').split('~');return p[0]?[p[0],p[1]||p[0]]:null;}
+  function rows(T){return T.map(function(l){return l.split('|');});}
+  var out=[],seen={},THE={'United Kingdom':1,'United States':1,'Netherlands':1,'Philippines':1,'Czech Republic':1,'United Arab Emirates':1,'DR Congo':1};
+  function E(n){return THE[n]?'the '+n:n;}
+  var FEM={'Marie Curie':1,'Umm Kulthum':1,'Cleopatra':1,'Serena Williams':1,'Zaha Hadid':1};
+  // push one question: cat key, tier, group, ar stem, en stem, answer pair, distractor pairs, emo flag
+  function add(cat,tier,g,ta,te,ans,ds,emo){
+    if(!ans||ds.length<3)return false;var o=[ans].concat(ds.slice(0,3));
+    for(var i=0;i<4;i++){if(!o[i]||!o[i][0]||!o[i][1])return false;for(var j=0;j<i;j++)if(o[i][0]===o[j][0]||o[i][1]===o[j][1])return false;}
+    var key=ta+'|'+o.map(function(x){return x[0];}).slice().sort().join('/');if(seen[key])return false;seen[key]=1;
+    out.push({c:cat,t:Math.max(1,Math.min(3,tier)),g:g,ar:[ta,o.map(function(x){return x[0];})],en:[te,o.map(function(x){return x[1];})],e:emo?1:0,k:key});return true;}
+  function pickD(pool,ans,n,eq){var c=shf(pool),r=[];for(var i=0;i<c.length&&r.length<n;i++){var x=c[i];if(!x||x[0]===ans[0]||x[1]===ans[1])continue;if(eq&&eq(x))continue;if(r.some(function(y){return y[0]===x[0]||y[1]===x[1];}))continue;r.push(x);}return r;}
+  // ---- countries
+  var C=rows(KB_COUNTRIES).map(function(r){return {n:bi(r[0]),cap:bi(r[1]),ct:r[2],cur:bi(r[3]),lang:bi(r[4]),area:+r[5],pop:+r[6],t:+r[7]};}),CE={};
+  C.forEach(function(c){CE[c.n[1]]=c;});
+  var cities=rows(KB_CITIES).map(function(r){return {n:bi(r[0]),c:CE[r[1]],t:+r[2]};}).filter(function(x){return x.c;});
+  function sameCont(c,f){return C.filter(function(x){return x!==c&&x.ct===c.ct&&(!f||f(x));});}
+  function otherC(c,f){var s=sameCont(c,f);return s.length>=3?s:C.filter(function(x){return x!==c&&(!f||f(x));});}
+  C.forEach(function(c){
+    if(c.cap){var tricks=cities.filter(function(x){return x.c===c&&x.t===1;}).map(function(x){return x.n;});
+      var ds=shf(tricks).slice(0,2).concat(pickD(otherC(c,function(x){return x.cap;}).map(function(x){return x.cap;}),c.cap,3));
+      add('geo',c.t,'cap','ما عاصمة '+c.n[0]+'؟','What is the capital of '+E(c.n[1])+'?',c.cap,pickD(ds,c.cap,3));
+      add('geo',c.t,'capr','«'+c.cap[0]+'» عاصمةُ أيّ دولة؟',c.cap[1]+' is the capital of which country?',c.n,pickD(otherC(c).map(function(x){return x.n;}),c.n,3));}
+    if(c.cur){add('geo',Math.min(3,c.t+1),'cur','ما العملة الرسمية في '+c.n[0]+'؟','What is the official currency of '+E(c.n[1])+'?',c.cur,pickD(C.filter(function(x){return x.cur&&x.cur[1]!==c.cur[1];}).map(function(x){return x.cur;}),c.cur,3));
+      if(c.cur[1].indexOf(' ')<0&&c.cur[1]!=='euro')add('geo',Math.min(3,c.t+1),'curr','أيّ دولة عملتها «'+c.cur[0]+'»؟','Which country uses the '+c.cur[1]+' as its currency?',c.n,pickD(otherC(c).map(function(x){return x.n;}),c.n,3));}
+    if(c.lang&&c.lang[1]!=='Arabic'){var bad={English:1,French:1,Arabic:1,Russian:1};
+      add('geo',c.t,'lang','ما اللغة الرسمية في '+c.n[0]+'؟','What is the official language of '+E(c.n[1])+'?',c.lang,pickD(C.filter(function(x){return x.lang&&!bad[x.lang[1]]&&x.lang[1]!==c.lang[1];}).map(function(x){return x.lang;}),c.lang,3));}
+    var iso=KB_ISO[c.n[1]];if(iso){var fl=String.fromCodePoint(0x1F1E6+iso.charCodeAt(0)-65,0x1F1E6+iso.charCodeAt(1)-65);
+      add('geo',c.t,'flag','لأيّ دولة هذا العلم؟ '+fl,'Which country does this flag belong to? '+fl,c.n,pickD(otherC(c).map(function(x){return x.n;}),c.n,3),1);}
+    var amb={Turkey:1,Russia:1,Egypt:1,Georgia:1,Armenia:1,Azerbaijan:1,Cyprus:1,Kazakhstan:1,Panama:1};
+    if(c.t>=2&&!amb[c.n[1]])add('geo',c.t,'cont','في أيّ قارة تقع '+c.n[0]+'؟','On which continent is '+E(c.n[1])+'?',KB_CONT[c.ct],pickD(Object.keys(KB_CONT).filter(function(k){return k!==c.ct;}).map(function(k){return KB_CONT[k];}),KB_CONT[c.ct],3));
+  });
+  cities.forEach(function(x){add('geo',x.t,'city','في أيّ دولة تقع مدينة '+x.n[0]+'؟','In which country is the city of '+x.n[1]+'?',x.c.n,pickD(otherC(x.c).map(function(y){return y.n;}),x.c.n,3));});
+  // odd city out
+  C.forEach(function(c){var mine=cities.filter(function(x){return x.c===c;});if(mine.length<3)return;var others=cities.filter(function(x){return x.c!==c&&x.c.ct===c.ct;});if(others.length<3)others=cities.filter(function(x){return x.c!==c;});
+    var cap=Math.min(40,mine.length*6);for(var k=0;k<cap*3&&cap>0;k++){var three=shf(mine).slice(0,3),odd=others[ri(others.length)];
+      if(add('geo',Math.max(odd.t,Math.max.apply(null,three.map(function(z){return z.t;}))),'oddcity','أيّ هذه المدن لا تقع في '+c.n[0]+'؟','Which of these cities is NOT in '+E(c.n[1])+'?',odd.n,three.map(function(z){return z.n;})))cap--;}});
+  // comparisons
+  function cmp(list,val,ratio,n,cat,g,ta,te,tier,most){var made=0;for(var k=0;k<n*6&&made<n;k++){var f=shf(list).slice(0,4);f.sort(function(a,b){return most?val(b)-val(a):val(a)-val(b);});
+      var a=val(f[0]),b=val(f[1]);if(most?a<b*ratio:a*ratio>b)continue;var tr=tier==='auto'?(most?(a>=b*5?1:a>=b*2.5?2:3):(a*5<=b?1:a*2.5<=b?2:3)):typeof tier==='function'?tier(f):tier;if(add(cat,tr,g,ta,te,f[0].n,f.slice(1).map(function(z){return z.n;})))made++;}}
+  var C2=C.filter(function(c){return c.t<=2;});
+  cmp(C2,function(c){return c.area;},1.5,1000,'geo','area','أيّ هذه الدول الأكبر مساحةً؟','Which of these countries is the largest by area?','auto',true);
+  cmp(C2,function(c){return c.area;},1.5,600,'geo','areas','أيّ هذه الدول الأصغر مساحةً؟','Which of these countries is the smallest by area?','auto',false);
+  cmp(C2,function(c){return c.pop;},1.5,1000,'geo','pop','أيّ هذه الدول الأكثر سكاناً؟','Which of these countries has the largest population?','auto',true);
+  cmp(C2,function(c){return c.pop;},1.5,600,'geo','pops','أيّ هذه الدول الأقل سكاناً؟','Which of these countries has the smallest population?','auto',false);
+  // landmarks
+  var LM=rows(KB_LANDMARKS).map(function(r){return {n:bi(r[0]),city:bi(r[1]),c:CE[r[2]],t:+r[3]};}).filter(function(x){return x.c;});
+  LM.forEach(function(x){add('geo',x.t,'lm','في أيّ دولة يقع معلم «'+x.n[0]+'»؟','In which country is '+x.n[1]+'?',x.c.n,pickD(otherC(x.c).map(function(y){return y.n;}),x.c.n,3));
+    var cs=LM.filter(function(y){return y.city[1]!==x.city[1]&&y.c.ct===x.c.ct;}).map(function(y){return y.city;});if(cs.length<3)cs=LM.filter(function(y){return y.city[1]!==x.city[1];}).map(function(y){return y.city;});
+    add('geo',Math.min(3,x.t+1),'lmc','في أيّ مدينة أو منطقة يقع معلم «'+x.n[0]+'»؟','In which city or region is '+x.n[1]+'?',x.city,pickD(cs,x.city,3));});
+  C.forEach(function(c){var mine=LM.filter(function(x){return x.c===c;});if(mine.length<3)return;var others=LM.filter(function(x){return x.c!==c;});
+    for(var k=0,m=0;k<60&&m<12;k++){var three=shf(mine).slice(0,3),odd=others[ri(others.length)];if(add('geo',2,'oddlm','أيّ هذه المعالم ليس في '+c.n[0]+'؟','Which of these landmarks is NOT in '+E(c.n[1])+'?',odd.n,three.map(function(z){return z.n;})))m++;}});
+  // nature
+  var NT=rows(KB_NATURE).map(function(r){return {n:bi(r[0]),ty:r[1],ct:r[2],c:CE[r[3]],v:+r[4],t:+r[5]};});
+  var TYN={M:['الجبال أو القمم','mountains'],R:['الأنهار','rivers'],L:['البحيرات','lakes'],D:['الصحاري','deserts'],I:['الجزر','islands'],W:['الشلالات','waterfalls']};
+  var TYQ={M:['الأعلى ارتفاعاً','the highest'],R:['الأطول','the longest'],L:['الأكبر مساحةً','the largest by area'],D:['الأكبر مساحةً','the largest by area'],I:['الأكبر مساحةً','the largest by area'],W:['الأعلى ارتفاعاً','the tallest']};
+  NT.forEach(function(x){var vb=(x.ty==='M'||x.ty==='R')?'يقع':'تقع';if(x.ct&&KB_CONT[x.ct])add('geo',x.t,'ntc','في أيّ قارة '+vb+' '+x.n[0]+'؟','On which continent is '+x.n[1]+'?',KB_CONT[x.ct],pickD(Object.keys(KB_CONT).filter(function(k){return k!==x.ct;}).map(function(k){return KB_CONT[k];}),KB_CONT[x.ct],3));
+    if(x.c)add('geo',Math.min(3,x.t+1),'ntco','في أيّ دولة '+vb+' '+x.n[0]+'؟','In which country is '+x.n[1]+'?',x.c.n,pickD(otherC(x.c).map(function(y){return y.n;}),x.c.n,3));});
+  Object.keys(TYN).forEach(function(ty){var L=NT.filter(function(x){return x.ty===ty;});if(L.length<4)return;
+    cmp(L,function(x){return x.v;},1.08,Math.min(120,L.length*8),'geo','nt'+ty,'أيّ هذه '+TYN[ty][0]+' '+TYQ[ty][0]+'؟','Which of these '+TYN[ty][1]+' is '+TYQ[ty][1]+'?',function(f){return Math.max(2,Math.max.apply(null,f.map(function(z){return z.t;})));},true);});
+  // animals
+  var AN=rows(KB_ANIMALS).map(function(r){return {n:bi(r[0]),cl:r[1],d:r[2],w:+r[3],t:+r[4]};});
+  AN.forEach(function(x){var trick={'blue whale':1,'sperm whale':1,'humpback whale':1,'bottlenose dolphin':1,'orca':1,'bat':1,'platypus':1,'emperor penguin':1,'seahorse':1,'whale shark':1,'spider':1,'scorpion':1,'tick':1,'tarantula':1,'octopus':1,'squid':1,'woodlouse':1,'barnacle':1,'salamander':1,'axolotl':1,'manatee':1,'walrus':1,'kiwi':1,'electric eel':1,'crab':1,'lobster':1,'shrimp':1,'snail':1,'slug':1,'oyster':1,'Komodo dragon':1,'ostrich':1,'stingray':1};
+    add('sci',trick[x.n[1]]?2:x.t,'acls','إلى أيّ مجموعة من الحيوانات ينتمي حيوان «'+x.n[0]+'»؟','Which animal group does the '+x.n[1]+' belong to?',KB_CLASS[x.cl],pickD(Object.keys(KB_CLASS).filter(function(k){return k!==x.cl;}).map(function(k){return KB_CLASS[k];}),KB_CLASS[x.cl],3));
+    if(x.d)add('sci',2,'adiet','ما نوع غذاء حيوان «'+x.n[0]+'» أساساً؟','What does the '+x.n[1]+' mainly eat?',KB_DIET[x.d],pickD(Object.keys(KB_DIET).filter(function(k){return k!==x.d;}).map(function(k){return KB_DIET[k];}).concat([['يتغذى على المعادن فقط','minerals only']]),KB_DIET[x.d],3));});
+  Object.keys(KB_CLASS).forEach(function(cl){var ins=AN.filter(function(x){return x.cl===cl;}),outs=AN.filter(function(x){return x.cl!==cl;});if(ins.length<1)return;
+    for(var k=0,m=0;k<600&&m<(ins.length>=3?120:30);k++){var one=ins[ri(ins.length)],three=shf(outs).slice(0,3);if(three.some(function(z){return z.cl===three[0].cl&&false;}))continue;
+      if(add('sci',Math.max(one.t,2),'is'+cl,'أيّ هذه الحيوانات من '+KB_CLASS[cl][0]+'؟','Which of these animals is '+KB_CLASS1[cl]+'?',one.n,three.map(function(z){return z.n;})))m++;}
+    if(ins.length>=3)for(var k2=0,m2=0;k2<300&&m2<60;k2++){var three2=shf(ins).slice(0,3),odd=outs[ri(outs.length)];
+      if(add('sci',2,'not'+cl,'أيّ هذه الحيوانات ليس من '+KB_CLASS[cl][0]+'؟','Which of these animals is NOT '+KB_CLASS1[cl]+'?',odd.n,three2.map(function(z){return z.n;})))m2++;}});
+  var ANw=AN.filter(function(x){return x.w>=0.01;});
+  cmp(ANw,function(x){return x.w;},3,800,'sci','heavy','أيّ هذه الحيوانات الأثقل وزناً عادةً؟','Which of these animals is usually the heaviest?',function(f){return Math.max.apply(null,f.map(function(z){return z.t;}));},true);
+  cmp(ANw,function(x){return x.w;},3,300,'sci','light','أيّ هذه الحيوانات الأخف وزناً عادةً؟','Which of these animals is usually the lightest?',2,false);
+  // elements
+  var EL=rows(KB_ELEMENTS).map(function(r){return {n:bi(r[0]),s:[r[1],r[1]],z:+r[2],k:r[3],t:+r[4]};});
+  EL.forEach(function(x){add('sci',x.t,'sym','ما الرمز الكيميائي لعنصر '+x.n[0]+'؟','What is the chemical symbol for '+x.n[1]+'?',x.s,pickD(EL.map(function(y){return y.s;}),x.s,3));
+    add('sci',x.t,'symr','ما العنصر الذي رمزه الكيميائي '+x.s[0]+'؟','Which element has the chemical symbol '+x.s[0]+'?',x.n,pickD(EL.map(function(y){return y.n;}),x.n,3));
+    add('sci',Math.min(3,x.t+1),'kind','كيف يُصنَّف عنصر '+x.n[0]+'؟','How is '+x.n[1]+' classified?',KB_KIND[x.k],pickD(Object.keys(KB_KIND).filter(function(k){return k!==x.k&&!(x.k==='noble'&&k==='nonmetal');}).map(function(k){return KB_KIND[k];}).concat(x.k==='noble'?[['سبيكة','an alloy']]:[]),KB_KIND[x.k],3));});
+  ['noble','metal','nonmetal'].forEach(function(kd){var ins=EL.filter(function(x){return x.k===kd;}),outs=EL.filter(function(x){return x.k!==kd&&!(kd==='nonmetal'&&x.k==='noble');});
+    for(var k=0,m=0;k<300&&m<60;k++){var one=ins[ri(ins.length)],three=shf(outs).slice(0,3);if(add('sci',2,'el'+kd,'أيّ هذه العناصر '+KB_KIND[kd][0]+'؟','Which of these elements is '+KB_KIND[kd][1]+'?',one.n,three.map(function(z){return z.n;})))m++;}});
+  cmp(EL,function(x){return x.z;},1.01,150,'sci','zlow','أيّ هذه العناصر أصغر عدداً ذرياً (أخفّ ذرةً)؟','Which of these elements has the lowest atomic number?',3,false);
+  // planets
+  var PL=rows(KB_PLANETS).map(function(r){return {n:bi(r[0]),o:+r[1],m:+r[2],t:2};});
+  cmp(PL,function(x){return x.o;},1.01,70,'sci','plnear','أيّ هذه الكواكب الأقرب إلى الشمس؟','Which of these planets is closest to the Sun?',2,false);
+  cmp(PL,function(x){return x.o;},1.01,70,'sci','plfar','أيّ هذه الكواكب الأبعد عن الشمس؟','Which of these planets is farthest from the Sun?',2,true);
+  // inventions & discoveries
+  var IV=rows(KB_INVENTIONS).map(function(r){return {n:bi(r[0]),p:bi(r[1]),y:+r[2],t:+r[3]};});
+  IV.forEach(function(x){add('sci',x.t,'inv','إلى من يُنسب الإنجاز التالي: '+x.n[0]+'؟','Who is credited with '+x.n[1]+'?',x.p,pickD(IV.filter(function(y){return y.p[1]!==x.p[1];}).map(function(y){return y.p;}),x.p,3));
+    if(IV.filter(function(y){return y.p[1]===x.p[1];}).length===1)add('sci',Math.min(3,x.t+1),'invr','بماذا يرتبط اسم '+x.p[0]+'؟','What is '+x.p[1]+' best known for?',x.n,pickD(IV.filter(function(y){return y.p[1]!==x.p[1];}).map(function(y){return y.n;}),x.n,3));});
+  function firstOf(list,n,g,ta,te,cat,last){var made=0;for(var k=0;k<n*8&&made<n;k++){var f=shf(list).slice(0,4);f.sort(function(a,b){return last?b.y-a.y:a.y-b.y;});var ok=true;
+      for(var i=1;i<4;i++)if(Math.abs(f[i].y-f[i-1].y)<15)ok=false;if(!ok)continue;
+      if(add(cat,Math.max(2,Math.min(3,Math.max.apply(null,f.map(function(z){return z.t;})))),g,ta,te,f[0].n,f.slice(1).map(function(z){return z.n;})))made++;}}
+  firstOf(IV,700,'invfirst','أيّ هذه الاختراعات أو الاكتشافات ظهر أولاً؟','Which of these inventions or discoveries came first?','sci',false);
+  firstOf(IV,250,'invlast','أيّ هذه الاختراعات أو الاكتشافات هو الأحدث؟','Which of these inventions or discoveries is the most recent?','sci',true);
+  // events
+  var EV=rows(KB_EVENTS).map(function(r){return {n:bi(r[0]),y:+r[1],t:+r[2]};});
+  EV.forEach(function(x){var offs=shf([-40,-30,-22,-15,-10,10,15,22,30,40]).slice(0,3),ds=offs.map(function(o){var y=x.y+o;return y>2025?x.y-Math.abs(o)-5:y;}).map(function(y){return [String(y),String(y)];});
+    add('his',Math.min(3,x.t+1),'year','في أيّ عام كان: '+x.n[0]+'؟','In which year did '+x.n[1]+' happen?',[String(x.y),String(x.y)],ds);});
+  firstOf(EV,2000,'evfirst','أيّ هذه الأحداث وقع أولاً؟','Which of these events happened first?','his',false);
+  firstOf(EV,1300,'evlast','أيّ هذه الأحداث هو الأحدث؟','Which of these events happened most recently?','his',true);
+  // people
+  var PP=rows(KB_PEOPLE).map(function(r){return {n:bi(r[0]),c:CE[r[1]],k:bi(r[2]),t:+r[3]};}),SPORT={football:1,basketball:1,boxing:1,sprinting:1,tennis:1,swimming:1,'Formula One':1,golf:1,athletics:1};
+  PP.forEach(function(x){var sp=!!SPORT[x.k[1]],cat=sp?'spo':'his';
+    var fm=FEM[x.n[1]];add(cat,x.t,'pknown','بماذا '+(fm?'اشتهرت ':'اشتهر ')+x.n[0]+'؟','What is '+x.n[1]+' famous for?',x.k,pickD(PP.filter(function(y){return y.k[1]!==x.k[1];}).map(function(y){return y.k;}),x.k,3));
+    if(PP.filter(function(y){return y.k[1]===x.k[1];}).length===1)add(cat,Math.min(3,x.t+1),'pknownr','من اشتهر بـ«'+x.k[0]+'»؟','Who is famous for '+x.k[1]+'?',x.n,pickD(PP.filter(function(y){return y!==x&&!SPORT[y.k[1]];}).map(function(y){return y.n;}),x.n,3));
+    if(x.c)add(cat,Math.min(3,x.t+(sp?0:1)),'pborn','في أيّ دولة '+(fm?'وُلدت ':'وُلد ')+x.n[0]+'؟','In which country was '+x.n[1]+' born?',x.c.n,pickD(otherC(x.c).map(function(y){return y.n;}),x.c.n,3));});
+  // books & art
+  var BK=rows(KB_BOOKS).map(function(r){return {n:bi(r[0]),a:bi(r[1]),t:+r[2]};});
+  BK.forEach(function(x){add('cul',x.t,'book','من مؤلف «'+x.n[0]+'»؟','Who wrote '+x.n[1]+'?',x.a,pickD(BK.filter(function(y){return y.a[1]!==x.a[1];}).map(function(y){return y.a;}),x.a,3));
+    add('cul',Math.min(3,x.t+1),'bookr','أيّ هذه من أعمال '+x.a[0]+'؟','Which of these is a work by '+x.a[1]+'?',x.n,pickD(BK.filter(function(y){return y.a[1]!==x.a[1];}).map(function(y){return y.n;}),x.n,3));});
+  var AR=rows(KB_ART).map(function(r){return {n:bi(r[0]),a:bi(r[1]),t:+r[2]};});
+  AR.forEach(function(x){add('cul',x.t,'art','من صاحب العمل الفني «'+x.n[0]+'»؟','Who created the famous work '+x.n[1]+'?',x.a,pickD(AR.filter(function(y){return y.a[1]!==x.a[1];}).map(function(y){return y.a;}),x.a,3));
+    add('cul',Math.min(3,x.t+1),'artr','أيّ هذه من أعمال '+x.a[0]+'؟','Which of these is a work by '+x.a[1]+'?',x.n,pickD(AR.filter(function(y){return y.a[1]!==x.a[1];}).map(function(y){return y.n;}),x.n,3));});
+  // clubs
+  var CL=rows(KB_CLUBS).map(function(r){return {n:bi(r[0]),city:bi(r[1]),c:CE[r[2]],st:bi(r[3]),t:+r[4]};}).filter(function(x){return x.c;});
+  CL.forEach(function(x){add('spo',x.t,'clubc','من أيّ دولة نادي '+x.n[0]+'؟','Which country is '+x.n[1]+' from?',x.c.n,pickD(otherC(x.c).map(function(y){return y.n;}),x.c.n,3));
+    var cs=CL.filter(function(y){return y.city[1]!==x.city[1]&&y.c===x.c;}).map(function(y){return y.city;});if(cs.length<3)cs=cs.concat(CL.filter(function(y){return y.city[1]!==x.city[1]&&y.c!==x.c;}).map(function(y){return y.city;}));
+    add('spo',Math.min(3,x.t+1),'clubcity','في أيّ مدينة يقع مقر نادي '+x.n[0]+'؟','Which city is '+x.n[1]+' based in?',x.city,pickD(cs,x.city,3));
+    if(x.st)add('spo',Math.min(3,x.t+1),'clubst','ما اسم ملعب نادي '+x.n[0]+'؟','What is the name of '+x.n[1]+'’s stadium?',x.st,pickD(CL.filter(function(y){return y.st&&y.st[1]!==x.st[1];}).map(function(y){return y.st;}),x.st,3));});
+  C.forEach(function(c){var mine=CL.filter(function(x){return x.c===c;});if(mine.length<3)return;var others=CL.filter(function(x){return x.c!==c;});
+    for(var k=0,m=0;k<200&&m<30;k++){var three=shf(mine).slice(0,3),odd=others[ri(others.length)];if(add('spo',2,'oddclub','أيّ هذه الأندية ليس من '+c.n[0]+'؟','Which of these clubs is NOT from '+E(c.n[1])+'?',odd.n,three.map(function(z){return z.n;})))m++;}});
+  // dishes & companies
+  var ARAB={'Saudi Arabia':1,Egypt:1,'United Arab Emirates':1,Kuwait:1,Qatar:1,Bahrain:1,Oman:1,Yemen:1,Iraq:1,Jordan:1,Syria:1,Lebanon:1,Libya:1,Tunisia:1,Algeria:1,Morocco:1,Mauritania:1,Sudan:1};
+  function region(c){return ARAB[c.n[1]]?'ARAB':c.ct;}
+  var DS=rows(KB_DISHES).map(function(r){return {n:bi(r[0]),c:CE[r[1]],t:+r[2]};}).filter(function(x){return x.c;});
+  DS.forEach(function(x){var pool=C.filter(function(y){return region(y)!==region(x.c)&&y.t===1;}).map(function(y){return y.n;});
+    add('gen',x.t,'dish','من أيّ مطبخ يأتي طبق «'+x.n[0]+'»؟','Which country’s cuisine is '+x.n[1]+' from?',x.c.n,pickD(pool,x.c.n,3));});
+  C.forEach(function(c){var mine=DS.filter(function(x){return x.c===c;});if(mine.length<3)return;var others=DS.filter(function(x){return region(x.c)!==region(c);});
+    for(var k=0,m=0;k<120&&m<15;k++){var three=shf(mine).slice(0,3),odd=others[ri(others.length)];if(add('gen',2,'odddish','أيّ هذه الأطباق ليس من مطبخ '+c.n[0]+'؟','Which of these dishes is NOT from '+E(c.n[1])+'?',odd.n,three.map(function(z){return z.n;})))m++;}});
+  var CO=rows(KB_COMPANIES).map(function(r){return {n:bi(r[0]),c:CE[r[1]],t:+r[2]};}).filter(function(x){return x.c;});
+  CO.forEach(function(x){add('gen',x.t,'co','من أيّ دولة انطلقت شركة '+x.n[0]+'؟','Which country does '+x.n[1]+' come from?',x.c.n,pickD(C.filter(function(y){return y!==x.c&&y.t===1&&CO.some(function(z){return z.c===y;});}).map(function(y){return y.n;}),x.c.n,3));});
+  C.forEach(function(c){var mine=CO.filter(function(x){return x.c===c;});if(mine.length<3)return;var others=CO.filter(function(x){return x.c!==c;});
+    for(var k=0,m=0;k<300&&m<40;k++){var three=shf(mine).slice(0,3),odd=others[ri(others.length)];if(add('gen',2,'oddco','أيّ هذه الشركات ليست من '+c.n[0]+'؟','Which of these companies is NOT from '+E(c.n[1])+'?',odd.n,three.map(function(z){return z.n;})))m++;}});
+  var AMB={Turkey:1,Russia:1,Egypt:1,Georgia:1,Armenia:1,Azerbaijan:1,Cyprus:1,Kazakhstan:1,Panama:1};
+  Object.keys(KB_CONT).forEach(function(ct){var ins=C.filter(function(c){return c.ct===ct&&c.t<=2&&!AMB[c.n[1]];}),outs=C.filter(function(c){return c.ct!==ct&&c.t<=2&&!AMB[c.n[1]];});if(ins.length<2)return;
+    for(var k=0,m=0;k<600&&m<90;k++){var one=ins[ri(ins.length)],three=shf(outs).slice(0,3);if(add('geo',Math.max(1,one.t),'incont','أيّ هذه الدول تقع في '+KB_CONT[ct][0]+'؟','Which of these countries is in '+KB_CONT[ct][1]+'?',one.n,three.map(function(z){return z.n;})))m++;}});
+  var caps=C.filter(function(c){return c.cap&&c.t<=2&&c.cap[1]!==c.n[1];}).map(function(c){return c.cap;}),big=cities.filter(function(x){return x.t===1&&x.c.cap;});
+  for(var kk=0,mm=0;kk<3000&&mm<600;kk++){var odd=big[ri(big.length)],three=shf(caps).slice(0,3);if(add('geo',2,'notcap','أيّ هذه المدن ليست عاصمةً لدولتها؟','Which of these cities is NOT a national capital?',odd.n,three))mm++;}
+  var euro=C.filter(function(c){return c.cur&&c.cur[1]==='euro';}),neur=C.filter(function(c){return c.ct==='EU'&&c.cur&&c.cur[1]!=='euro';});
+  for(var k3=0,m3=0;k3<1500&&m3<250;k3++){var one3=euro[ri(euro.length)],three3=shf(neur).slice(0,3);if(add('geo',2,'euro','أيّ هذه الدول تستخدم اليورو عملةً لها؟','Which of these countries uses the euro?',one3.n,three3.map(function(z){return z.n;})))m3++;}
+  for(var k4=0,m4=0;k4<1500&&m4<250;k4++){var one4=neur[ri(neur.length)],three4=shf(euro).slice(0,3);if(add('geo',2,'noeuro','أيّ هذه الدول الأوروبية لا تستخدم اليورو؟','Which of these European countries does NOT use the euro?',one4.n,three4.map(function(z){return z.n;})))m4++;}
+  KBQ=out;return out;
+
+}
+
+
+// balanced pools per language: legacy Arabic banks + knowledge-base questions, picked by template group so no single template dominates
 var BAL_W=[[60,40,0],[40,50,10],[20,60,20],[10,55,35],[5,50,45]];
-var BAL_CATS=['علوم','علوم','جغرافيا','تاريخ','رياضة','رياضة','دين','أشياء رهيبة','عامة'],BCATQ=[],BLAST=null;
+var BAL_CATS={ar:['علوم','علوم','جغرافيا','جغرافيا','تاريخ','رياضة','رياضة','دين','أشياء رهيبة','عامة','ثقافة وفنون'],en:['Science','Science','Geography','Geography','History','History','Sports','Culture & Arts','General']};
+var BALP={},BCATQ={ar:[],en:[]},BLAST={};
+function balPools(lang){
+  if(BALP[lang])return BALP[lang];var P={1:[],2:[],3:[]},Q=kbBuild();
+  if(lang==='ar')[[1,BAL_E],[2,BAL_M],[3,BAL_H]].forEach(function(x){x[1].forEach(function(b){P[x[0]].push({c:b[0],t:b[1],o:b[2],e:b[3]?1:0,k:b[1],g:'L'+b[0]});});});
+  Q.forEach(function(q){var L=q[lang];P[q.t].push({c:KB_CATS[q.c][lang==='ar'?0:1],t:L[0],o:L[1],e:q.e,k:lang+':'+q.k,g:q.g});});
+  BALP[lang]=P;return P;}
 function balTier(lv){var w=BAL_W[Math.max(0,Math.min(4,Math.floor(lv)))],r=rnd(100);return r<w[0]?1:r<w[0]+w[1]?2:3;}
-function balPick(t,cat){var P=BAL_POOL[t],pool=[];for(var i=0;i<P.length;i++)if(P[i][0]===cat&&!SEEN[P[i][1]])pool.push(i);
-  var G=t===2?MID_GENS[cat]:t===3?GENS[cat]:null;
-  if(G&&(!pool.length||rnd(t===3?5:4)<2)){for(var k=0;k<40;k++){var c=G[rnd(G.length)]();if(!c)continue;var u=c[2].filter(function(x,j,a){return a.indexOf(x)===j;});if(u.length!==4)continue;var key=qKey(c);if(SEEN[key])continue;SEEN[key]=1;return c;}}
-  if(!pool.length)return null;var b=P[pool[rnd(pool.length)]];SEEN[b[1]]=1;return b;}
-function makeBalQ(id,lv){
-  var cat=null;for(var g=0;g<20&&!cat;g++){if(!BCATQ.length){for(var t2=0;t2<100;t2++){BCATQ=shuffle(BAL_CATS.slice());var ok=BCATQ[0]!==BLAST;for(var j=1;j<BCATQ.length;j++)if(BCATQ[j]===BCATQ[j-1])ok=false;if(ok)break;}}cat=BCATQ.shift();}
-  BLAST=cat;var t=balTier(lv),order=t===1?[1,2,3]:t===2?[2,1,3]:[3,2,1],b=null,tier=t;
-  for(var i=0;i<3&&!b;i++){b=balPick(order[i],cat);if(b)tier=order[i];}
-  if(!b){[1,2,3].forEach(function(k){BAL_POOL[k].forEach(function(x){if(x[0]===cat)delete SEEN[x[1]];});});b=balPick(t,cat)||balPick(2,cat)||balPick(1,cat);if(b)tier=BAL_POOL[t].indexOf(b)>=0?t:BAL_POOL[2].indexOf(b)>=0?2:1;}
-  if(!b){b=BAL_M[rnd(BAL_M.length)];tier=2;}
-  if(seenCount()>40000)SEEN={};saveSeen();
-  var m=mcFrom(b[2]),q={id:id,kind:'mc',cat:b[0],text:b[1],o:m.o,ans:m.ans,tier:tier};if(b[3])q.emo=1;return q;
+function balPick(lang,t,cat){
+  var P=balPools(lang)[t],groups={},gl=[];
+  for(var i=0;i<P.length;i++){var x=P[i];if(x.c!==cat||SEEN[x.k])continue;if(!groups[x.g]){groups[x.g]=[];gl.push(x.g);}groups[x.g].push(x);}
+  var G=lang==='ar'?(t===2?MID_GENS[cat]:t===3?GENS[cat]:null):null;
+  if(G&&(!gl.length||rnd(6)===0)){for(var k=0;k<40;k++){var c=G[rnd(G.length)]();if(!c)continue;var u=c[2].filter(function(x,j,a){return a.indexOf(x)===j;});if(u.length!==4)continue;var key=qKey(c);if(SEEN[key])continue;SEEN[key]=1;return {c:c[0],t:c[1],o:c[2],e:c[3]?1:0,k:key};}}
+  if(!gl.length)return null;var grp=groups[gl[rnd(gl.length)]],b=grp[rnd(grp.length)];SEEN[b.k]=1;return b;}
+function makeBalQ(id,lv,lang){
+  lang=lang==='en'?'en':'ar';var CS=BAL_CATS[lang],cat=null;
+  for(var g=0;g<20&&!cat;g++){if(!BCATQ[lang].length){for(var t2=0;t2<100;t2++){BCATQ[lang]=shuffle(CS.slice());var ok=BCATQ[lang][0]!==BLAST[lang];for(var j=1;j<BCATQ[lang].length;j++)if(BCATQ[lang][j]===BCATQ[lang][j-1])ok=false;if(ok)break;}}cat=BCATQ[lang].shift();}
+  BLAST[lang]=cat;var t=balTier(lv),order=t===1?[1,2,3]:t===2?[2,1,3]:[3,2,1],b=null,tier=t;
+  for(var i=0;i<3&&!b;i++){b=balPick(lang,order[i],cat);if(b)tier=order[i];}
+  if(!b){var PP=balPools(lang);[1,2,3].forEach(function(k){PP[k].forEach(function(x){if(x.c===cat)delete SEEN[x.k];});});for(i=0;i<3&&!b;i++){b=balPick(lang,order[i],cat);if(b)tier=order[i];}}
+  if(!b){var P2=balPools(lang)[2];b=P2[rnd(P2.length)];tier=2;}
+  if(seenCount()>60000)SEEN={};saveSeen();
+  var m=mcFrom(b.o),q={id:id,kind:'mc',cat:b.c,text:b.t,o:m.o,ans:m.ans,tier:tier};if(b.e)q.emo=1;return q;
 }
 var A_DEC=0.6, CENTER=0.5, CATCH_R=0.07, COLL_MS=80, XWIN=4000, XEND=6300;
 function powerAt(ms){var x=(ms/700)%2;return 1-Math.abs(x-1);}
@@ -1358,7 +1844,7 @@ function openPos(pos,walls){if(!walls||walls.indexOf(pos[0]+','+pos[1])<0)return
   if(a>=0&&walls.indexOf(pos[0]+','+a)<0)return [pos[0],a];if(b<COLS&&walls.indexOf(pos[0]+','+b)<0)return [pos[0],b];}return pos;}
 function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair',mode:'team',pack:'bal',turns:true};var self=this;this.iv=setInterval(function(){self.tick();},150);}
 Server.prototype.now=function(){return Date.now();};
-Server.prototype.mkQ=function(pid){var p=this.S.pack;if(p==='bal'){this.lv=this.lv||{};return makeBalQ(++this.qid,this.lv[pid]==null?2:this.lv[pid]);}return p==='easy'?makeEasyQ(++this.qid):p==='main'?makeQ(this.used,++this.qid):makeMidQ(++this.qid);};
+Server.prototype.mkQ=function(pid){var p=this.S.pack;if(p==='bal'||this.S.lang==='en'){this.lv=this.lv||{};return makeBalQ(++this.qid,this.lv[pid]==null?2:this.lv[pid],this.S.lang);}return p==='easy'?makeEasyQ(++this.qid):p==='main'?makeQ(this.used,++this.qid):makeMidQ(++this.qid);};
 Server.prototype.connect=function(c){this.conns.push({c:c,pid:null});};
 Server.prototype.entry=function(c){for(var i=0;i<this.conns.length;i++)if(this.conns[i].c===c)return this.conns[i];return null;};
 Server.prototype.player=function(pid){var ps=this.S.players;for(var i=0;i<ps.length;i++)if(ps[i].id===pid)return ps[i];return null;};
@@ -1433,7 +1919,7 @@ Server.prototype.handle=function(c,m){
   if(m.t==='answer'){
     if(me.id!==R.mover||st.qRes!=null||m.sid!==st.id||n<R.stunUntil)return;
     st.qRes=(m.a===st.q.ans);if(st.qRes)R.stats.correct++;else R.stats.wrong++;
-    if(this.S.pack==='bal'){this.lv=this.lv||{};var lv0=this.lv[R.mover]==null?2:this.lv[R.mover];this.lv[R.mover]=Math.max(0,Math.min(4.5,lv0+(st.qRes?0.5:-1)));}
+    if(this.S.pack==='bal'||this.S.lang==='en'){this.lv=this.lv||{};var lv0=this.lv[R.mover]==null?2:this.lv[R.mover];this.lv[R.mover]=Math.max(0,Math.min(4.5,lv0+(st.qRes?0.5:-1)));}
     this.push();return;
   }
   if(m.t==='move'){
@@ -1633,7 +2119,7 @@ Server.prototype.view=function(pid){
   var S=this.S,n=this.now(),self=this;
   var v={pid:pid,host:this.hostPid,phase:S.phase,size:S.size,format:S.format,snatchPts:S.snatch||{},
     players:S.players.map(function(p){return {id:p.id,name:p.name,on:p.on,team:p.team,tot:self.total(p.id)};})};
-  v.mode=S.mode;v.pack=S.pack;v.turns=!!S.turns;v.ffa=!!S.ffa;v.arena=!!S.arena;
+  v.mode=S.mode;v.pack=S.pack;v.lang=S.lang||'ar';v.turns=!!S.turns;v.ffa=!!S.ffa;v.arena=!!S.arena;
   if(S.phase==='lobby')v.lobbyMsg=this.lobbyMsg();
   if(S.phase==='match'||S.phase==='end'){v.rotation=S.rotation;v.rotations=S.rotations;v.teamTot=[this.sum(S.A),this.sum(S.B)];}
   if(S.phase==='match'){
@@ -1666,6 +2152,132 @@ Server.prototype.push=function(){var self=this;this.conns.forEach(function(e){if
 function $(s){return document.querySelector(s);}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function lsGet(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+var LANG=lsGet('bel_lang',null)||(function(){var L=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||'']).join(',').toLowerCase(),tz='';
+  try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+  return /(^|,)ar/.test(L)||/Riyadh|Dubai|Kuwait|Qatar|Bahrain|Muscat|Baghdad|Amman|Beirut|Damascus|Cairo|Casablanca|Algiers|Tunis|Tripoli|Khartoum|Aden|Gaza|Hebron|Nouakchott|El_Aaiun/.test(tz)?'ar':'en';})();
+// ===== English interface: Arabic UI phrase -> English. Applied to the page text when LANG==='en' =====
+var I18N={
+"خلف خطوط العدو — اجرِ، فكّر، أو جازف":"Behind Enemy Lines — run, think, or gamble",
+"خلف خطوط العدو":"Behind Enemy Lines",
+"إنشاء غرفة":"Create room","انضمام":"Join",
+"🎓 تعلّم اللعب: تدريب مع الكمبيوتر":"🎓 Learn to play: practice vs the computer",
+"جولتان قصيرتان ضد المدرّب 🤖 مع تلميحات تشرح كل شيء — لا يحتاج إنترنت ولا أصدقاء":"Two short rounds against the coach 🤖 with tips that explain everything — no internet or friends needed",
+"🪤 أنواع الفخاخ":"🪤 Trap types","كيف تُلعب؟ (بسيطة)":"How to play (simple)",
+"👥 لاعبان، كلٌّ في هاتفه. في كل جولة: واحد":"👥 Two players, each on their own phone. Each round one player",
+"يجري":"runs","🏃 والآخر":"🏃 and the other","يضع الفخاخ":"sets traps","🪤، ثم تتبادلان.":"🪤, then you swap.",
+"🏃 إذا كان دورك الجري:":"🏃 When you are the runner:",
+"• يظهر لك سؤال، وأمامك 3 مربعات.":"• A question appears and 3 squares lie ahead of you.",
+"• أجب صح ← يظهر لك المربع الآمن بالأخضر ← اضغطه وتقدّم خطوة.":"• Answer correctly → the safe square glows green → tap it to move forward.",
+"• أو خمّن واضغط مربعاً مباشرة. فإن وقعت في فخ 💥 تتراجع خطوة.":"• Or guess and tap a square straight away. Hit a trap 💥 and you are knocked back.",
+"• 3 تخمينات صحيحة متتالية ← تظهر لك":"• 3 lucky guesses in a row → you unlock",
+"عجلة الحظ 🎡":"the Wheel of Luck 🎡","وفيها جائزة صغيرة: نقطة لك، أو نقطة من خصمك، أو تنزيله درجة.":"with a small prize: +1 for you, −1 for your rival, or pushing your rival down a row.",
+"رهان السؤال:":"Question bet:",
+"ترى أن السؤال صعب؟ راهِن خصمك به وخذ سؤالاً غيره (3 مرات في الجولة). إن أجاب خصمك صح:":"Think the question is hard? Bet your rival can't answer it and take another one (3 times per round). If your rival answers correctly:",
+"له و":"for them and","عليك. وإن أخطأ:":"for you. If they are wrong:","لك.":"for you.",
+"• 🔄 لكن خصمك يستطيع":"• 🔄 But your rival can","قلب الرهان":"flip the bet","عليك: فتجيب أنت عن السؤال نفسه — صح":"on you: then you answer the same question — right","لك، خطأ":"for you, wrong",
+"عليك. فلا تهرب من سؤال إلا إن كنت واثقاً أنه صعب على خصمك!":"for you. Only dodge a question if you are sure it is hard for your rival!",
+"🪤 إذا كان دورك وضع الفخاخ:":"🪤 When you are setting traps:","• تُضاء لك 3 مربعات أمام خصمك.":"• 3 squares light up in front of your rival.",
+"• اضغط على مربعين منها 👆👆 فيصبحان فخّين، والثالث يبقى آمناً.":"• Tap two of them 👆👆 to turn them into traps; the third stays safe.",
+"• كرر ذلك في كل خطوة يخطوها خصمك.":"• Repeat this for every step your rival takes.",
+"• 👀 ترى سؤال خصمك على شاشتك أيضاً. وإن راهنك بسؤاله: أجب صح =":"• 👀 You also see your rival’s question. If they bet you with it: answer correctly =",
+"لك، أو اقلب الرهان عليه إن ظننت أنه هارب.":"for you, or flip the bet if you think they are dodging.",
+"⭐ النقاط:":"⭐ Points:","• إجابة صحيحة وتقدّم =":"• Correct answer and move =","• تخمين صحيح =":"• Lucky guess =","• الوصول إلى خط النهاية 🏁 =":"• Reaching the finish 🏁 =","• وقوع العدّاء في فخ =":"• Runner hits a trap =","لواضع الفخ":"for the trap setter",
+"• عجلة الحظ: جائزة صغيرة حسب مكان وقوف الكرة (+1 لك، −1 لخصمك، تنزيله درجة، أو 👑 الاثنتان)":"• Wheel of Luck: a small prize depending on where the ball stops (+1 for you, −1 for your rival, push them down a row, or 👑 both)",
+"🏆 صاحب النقاط الأعلى يفوز، وفي الفرق مجموع نقاط الفريق.":"🏆 Highest score wins; in teams, the team total counts.",
+"👥 الفرق (2 ضد 2، 1 ضد 2، 3 ضد 5…):":"👥 Teams (2 v 2, 1 v 2, 3 v 5…):","• كل مواجهة بين لاعبَين، وتجري المواجهات معاً.":"• Each duel is between two players, and duels run at the same time.",
+"الخطف:":"Snatching:","إذا رمى لاعب سؤاله ظهر على هواتف الجميع، وأسرع إجابة صحيحة تفوز: خصمه":"If a player throws their question it appears on everyone’s phone, and the fastest correct answer wins: an opponent gets",
+"(و−1 على صاحب السؤال)، أو زميله":"(and −1 to the thrower), or a teammate gets","إن أنقذه. ومن يخطئ":"for the rescue. Anyone who answers wrong gets","ولا يجيب مرة ثانية.":"and cannot answer again.",
+"رمز الغرفة — أرسله للاعبين":"Room code — send it to the players","اللاعبون":"Players","ابدأ المباراة":"Start match","الصوت":"Sound","اسمك":"Your name","رمز الغرفة":"Room code",
+"أعلى اليسار":"up-left","للأمام":"forward","أعلى اليمين":"up-right",
+"💡 التلميحات التعليمية: تعمل (اضغط للإيقاف)":"💡 Learning tips: on (tap to turn off)","💡 التلميحات التعليمية: متوقفة (اضغط للتشغيل)":"💡 Learning tips: off (tap to turn on)",
+"🔊 المؤثرات الصوتية: تعمل (اضغط للكتم)":"🔊 Sound effects: on (tap to mute)","🔇 المؤثرات الصوتية: مكتومة (اضغط للتشغيل)":"🔇 Sound effects: muted (tap to unmute)",
+"أنت":"You","تدريب":"Practice","🤖 المدرّب":"🤖 Coach","اكتب اسمك أولاً":"Enter your name first",
+"تعذّر تحميل مكتبة الاتصال — تحقق من الإنترنت ثم أعد فتح الصفحة":"Could not load the connection library — check your internet and reopen the page",
+"⏳ جارٍ إنشاء الغرفة...":"⏳ Creating room...","خطأ في الاتصال:":"Connection error:","رمز الغرفة من 5 أحرف":"The room code has 5 letters","⏳ جارٍ الاتصال بالغرفة...":"⏳ Connecting to the room...","الغرفة غير موجودة أو أُغلقت":"Room not found or closed","📡 انقطع الاتصال بالمضيف":"📡 Lost connection to the host","جارٍ إعادة المحاولة...":"Retrying...",
+"الأحمر":"Red","الأزرق":"Blue","• الدورة":"• Rotation","🔁 الدور":"🔁 Turn","الجولة":"Round","نقاطك":"Your points","• ترتيبك":"• Your rank","فريقك":"Your team","نقطة —":"pts —",
+"✅ انتهت مواجهتك":"✅ Your duel is over","⏸ استراحة في هذه الدورة":"⏸ Resting this rotation","ليس لك خصم في هذه الدورة. راقب الأسئلة المرمية واخطفها ⚡ لتكسب نقاطاً.":"You have no opponent this rotation. Watch for thrown questions and snatch them ⚡ to earn points.",
+"الدورة التالية بعد لحظات — ستواجه خصماً جديداً":"Next rotation in a moment — you will face a new opponent","جارٍ احتساب النتيجة...":"Calculating results...","بانتظار انتهاء المواجهات الأخرى":"Waiting for the other duels to finish",
+"المواجهة":"Duel","الحالة":"Status","ضد 🔵":"vs 🔵","✅ انتهت":"✅ Finished","الدور":"Turn","— بقي":"— left","صفوف":"rows","نقطة — الأزرق":"pts — Blue","نقطة":"pts",
+"الأسئلة:":"Questions:","⚖️ متوازنة (الكل)":"⚖️ Balanced (all)","🎯 فوق المتوسط":"🎯 Above average","🔥 صعبة جداً":"🔥 Very hard","⚽ رياضة وعامة":"⚽ Sports & general","⚖️ متوازنة":"⚖️ Balanced",
+"طريقة اللعب:":"Game mode:","👥 فرق":"👥 Teams","🧍 كلٌّ لنفسه":"🧍 Free-for-all","نظام الأدوار:":"Turn system:","🔁 دور بدور (خطوة لكلٍّ)":"🔁 Turn by turn (one step each)","⏱ جولة كاملة":"⏱ Full round","🔁 دور بدور":"🔁 Turn by turn",
+"🧍 كلٌّ لنفسه —":"🧍 Free-for-all —","لاعبين":"players","• الجميع في ساحة واحدة: لاعب يجري، والبقية":"• Everyone shares one arena: one player runs, and the rest","كلهم ضده":"are all against them",
+"ينصبون الفخاخ معاً — كل لاعب فخ واحد في كل خطوة، ومن يقع العدّاء في فخّه يأخذ":"set traps together — one trap each per step, and whoever’s trap the runner hits gets",
+"• يتناوب الجميع على الجري، ولا أحد ينتظر بلا عمل.":"• Everyone takes turns running, and nobody waits around.","• إذا رمى العدّاء سؤاله يخطفه الأسرع ⚡.":"• If the runner throws a question, the fastest player snatches it ⚡.",
+"• صاحب أعلى نقاط يفوز، ويظهر الترتيب 🥇🥈🥉 طوال المباراة.":"• Highest score wins, and the ranking 🥇🥈🥉 shows throughout the match.",
+"المواجهة:":"Match-up:","ضد":"vs","مواجهة واحدة لكل لاعب":"One duel per player","كل لاعب ضد كل لاعب":"Everyone plays everyone",
+"• كل مواجهة بين لاعبَين فقط، يلعبها كلٌّ منهما بنفسه.":"• Each duel is between two players only, each playing for themselves.",
+"• العدد غير متساوٍ: لاعبو الفريق الأصغر يلعبون أكثر من مواجهة، حتى يتساوى عدد المواجهات للفريقين.":"• Uneven teams: players on the smaller team play extra duels so both teams play the same number.",
+"إذا رمى لاعب سؤاله ظهر للجميع، وأسرع إجابة صحيحة تفوز:":"If a player throws their question it appears for everyone, and the fastest correct answer wins:",
+"للخصم (و−1 على صاحب السؤال)، أو":"for an opponent (and −1 to the thrower), or","لزميله إن أنقذه. والخطأ":"for a teammate who rescues them. A wrong answer is","على من أخطأ.":"for whoever got it wrong.","• مجموع نقاط الفريق الأعلى يفوز.":"• The team with the highest total wins.",
+"اختر فريقك. يمكن أن تكون الفرق غير متساوية (مثل 1 ضد 2).":"Choose your team. Teams can be uneven (e.g. 1 v 2).","(أنت)":"(you)","🔴 الأحمر":"🔴 Red","🔵 الأزرق":"🔵 Blue","انضم للأحمر":"Join Red","انضم للأزرق":"Join Blue",
+"هاتفك يدير المباراة: أبقِ الصفحة مفتوحة والشاشة مضاءة.":"Your phone runs the match: keep this page open and the screen on.","بانتظار المضيف لبدء المباراة...":"Waiting for the host to start...",
+"🟢 سهل":"🟢 Easy","🟡 متوسط":"🟡 Medium","🔴 صعب":"🔴 Hard","🏁 وصل!":"🏁 Finished!","🏁 باقي صف واحد":"🏁 1 row left","🏁 باقي صفّان":"🏁 2 rows left","🏁 باقي":"🏁","صفاً":"rows left",
+"نابض":"Spring","يركلك صفاً إلى الخلف":"kicks you back one row","حفرة":"Pit","تسقط فيها وتخرج صفاً إلى الخلف":"you fall in and come out one row back","شبكة":"Net","تعلق مكانك وتتأخر طويلاً":"you are stuck in place for longer","جليد":"Ice","تنزلق إلى الخلف وإلى الجانب":"you slide back and sideways","لغم":"Mine","ينفجر ويقذفك صفّين إلى الخلف!":"explodes and throws you two rows back!",
+"• تقدّمك":"• Your progress","🔁 دورك الآن! خطوة واحدة 🏃":"🔁 Your turn! One step 🏃","🪤 دور":"🪤 Turn:","— انصبوا الفخاخ":"— set your traps","— ازرع فخاخك":"— plant your traps",
+"تقدّمك محفوظ من دورك السابق — أجب وتقدّم ثم ينتقل الدور":"Your progress is saved from last turn — answer, move, then the turn passes","بعد خطوته يعود الدور إليك من حيث وقفت":"After their step, the turn returns to you where you left off",
+"سيظهر لك سؤال 🧠 وأمامك 3 مربعات.":"A question 🧠 will appear, with 3 squares ahead of you.","أجب صح ← يُضاء المربع الآمن بالأخضر ✅ ← اضغطه =":"Answer correctly → the safe square glows green ✅ → tap it =","أو خمّن واضغط مربعاً 🎲: صح =":"Or guess and tap a square 🎲: safe =","، فخ =":", trap =","وتتراجع خطوة 💥.":"and you are knocked back 💥.","3 تخمينات صحيحة متتالية =":"3 lucky guesses in a row =",". والوصول 🏁 =":". Reaching 🏁 =",
+"يجري الآن، وأنتم جميعاً ضده 🏃.":"is running now, and you are all against them 🏃.","في كل خطوة يضع لاعبان منكم":"Each step, two of you place","فخاً واحداً لكلٍّ منهما":"one trap each","👆 — لا تكرر مربع زميلك.":"👆 — don’t pick your partner’s square.","كل مرة يقع في فخّك =":"Each time they hit your trap =","وإن رمى سؤاله فاخطفه ⚡.":"and if they throw their question, snatch it ⚡.",
+"ستُضاء لك 3 مربعات أمام خصمك 🏃.":"3 squares will light up in front of your rival 🏃.","اضغط على":"Tap","مربعين":"two squares","👆👆 = فخّان 🪤.":"👆👆 = two traps 🪤.","المربع الثالث يبقى آمناً — اختر بذكاء أين تتركه!":"The third square stays safe — choose wisely where to leave it!","كل مرة يقع فيها خصمك في فخك =":"Every time your rival hits your trap =","لك. لديك 5 ثوانٍ كل مرة.":"for you. You have 5 seconds each time.",
+"🏃 دورك: الجري":"🏃 Your role: run","🪤 دوركم: نصب الفخاخ لـ":"🪤 Your role: set traps for","🪤 دورك: وضع الفخاخ":"🪤 Your role: set traps",
+"🔁 دور بدور: كل لاعب يلعب":"🔁 Turn by turn: each player plays","خطوة واحدة":"one step","ثم ينتقل الدور، ويبقى تقدّم كل لاعب محفوظاً. أول من يصل 🏁 ينهي السباق بعد اكتمال الدورة.":"then the turn passes, and everyone’s progress is saved. The first to reach 🏁 ends the race once the cycle is complete.",
+"🏃 الميدان":"🏃 The field","🪤 لوحة الفخاخ":"🪤 Trap board","كل لاعب يضع فخاً واحداً في المربعات أمام العدّاء — ويبقى مربع آمن.":"Each player places one trap in the squares ahead of the runner — one square stays safe.","اضغط على المربعات الثلاثة أمام العدّاء لوضع الفخاخ — اترك مربعاً واحداً آمناً.":"Tap the three squares ahead of the runner to set traps — leave one square safe.",
+"🔁 راهِن خصمك بهذا السؤال وخذ غيره":"🔁 Bet your rival on this question and take another","👀 سؤال خصمك الآن •":"👀 Your rival’s question •","— الإجابة:":"— answer:",
+"⚡ عرفتَ سؤال":"⚡ You answered the question of","لك و":"for you and","عليه":"for them","عرف سؤالك:":"answered your question:","عليك":"for you","خطف سؤال":"snatched the question of","على":"to","🛡️ أنقذتَ زميلك":"🛡️ You rescued your teammate","لك":"for you","🛡️ زميلك":"🛡️ Your teammate","أنقذك:":"rescued you:","له":"for them","أنقذ زميله":"rescued their teammate",
+"✅ رهانك نجح، لم يعرفه أحد:":"✅ Your bet worked, nobody knew it:","✅ لم يعرفه أحد:":"✅ Nobody knew it:","لـ":"for","✅ قُلب الرهان عليك فأجبت صح:":"✅ The bet was flipped on you and you got it right:","🔄 قُلب الرهان على":"🔄 The bet was flipped on","فأجاب صح:":"who answered correctly:","❌ قُلب الرهان عليك فلم تُصب:":"❌ The bet was flipped on you and you missed:","عليك و":"for you and","لخصمك":"for your rival","✅ قلبك للرهان نجح:":"✅ Your flip worked:","عليه و":"for them and","فلم يُصب:":"who missed:",
+"⚡ رهان!":"⚡ Bet!","رمى سؤاله — أسرع إجابة صحيحة تفوز":"threw a question — the fastest correct answer wins","⚡ خطف!":"⚡ Snatch!","رمى سؤاله للجميع":"threw a question to everyone","🔁 رهان! خصمك يراهن أنك لا تعرف هذا السؤال":"🔁 Bet! Your rival bets you don’t know this question",
+"زميلك! أنقذه: صح =":"is your teammate! Rescue them: right =","لك • خطأ =":"for you • wrong =","صح =":"right =","عليه • خطأ =":"for them • wrong =","أجب صح =":"Answer correctly =","له • خطأ أو تأخر =":"for them • wrong or late =","له • ⏱":"for them • ⏱",
+"🔄 اقلب الرهان عليه: هو يجيب، صح = +2 له • خطأ = −2 عليه و+1 لك":"🔄 Flip the bet: they answer — right = +2 for them • wrong = −2 for them and +1 for you","إخفاء":"Hide","🔄 قلب خصمك الرهان عليك!":"🔄 Your rival flipped the bet on you!","لك • خطأ أو تأخر =":"for you • wrong or late =","❌ أخطأت (−1) — بانتظار الآخرين…":"❌ Wrong (−1) — waiting for the others…",
+"🔁 رميتَ سؤالك":"🔁 You threw your question","للجميع":"to everyone","على خصمك":"to your rival","رمى سؤاله… (⏱":"threw a question… (⏱","🔁 خصمك راهنك بسؤاله: إن عرفته أجب واكسب":"🔁 Your rival bet you with their question: if you know it, answer and win",". وإن لم تعرفه":". If you don’t,","اقلب الرهان":"flip the bet","عليه!":"on them!",
+"اضغط للإخفاء":"tap to hide","💥 وقعت في":"💥 You hit a","! للفخاخ 5 أنواع: 🌀نابض 🕳️حفرة 🕸️شبكة 🧊جليد 💣لغم — ولكلٍّ عقوبته. وبعد كل خطوة تنكشف الفخاخ لحظةً لتتعلّم.":"! There are 5 trap types: 🌀Spring 🕳️Pit 🕸️Net 🧊Ice 💣Mine — each with its own penalty. After every step the traps are revealed briefly so you can learn.",
+"🧠 أجب عن السؤال: إن أصبت يُضاء لك المربع":"🧠 Answer the question: get it right and the","الآمن بالأخضر":"safe square lights up green","✅ هذا هو المربع الآمن — اضغطه لتتقدّم":"✅ This is the safe square — tap it to move forward","🎲 أو خمّن الآن: اضغط سهماً مباشرة. صح =":"🎲 Or guess now: tap an arrow. Safe =","، فخ = تراجع خطوة":", trap = knocked back",
+"🎡 تخمين صحيح ثالث على التوالي =":"🎡 A third lucky guess in a row =","عجلة الحظ":"the Wheel of Luck","🔁 سؤال صعب؟ راهِن خصمك به وخذ سؤالاً غيره — لكن قد يقلب الرهان عليك!":"🔁 Hard question? Bet your rival with it and take another — but they may flip the bet on you!","متبقية)":"left)",
+"🪤 العدو يضع الفخاخ الآن... حُلّ التحدي بسرعة":"🪤 The enemy is setting traps... solve it fast","✅ أصبت! الطريق الآمن:":"✅ Correct! Safe way:","❌ أخطأت — خمّن الاتجاه وجازف!":"❌ Wrong — guess a direction and gamble!","🎲 الفخاخ جاهزة — حُلّ التحدي أو جازف الآن":"🎲 Traps are set — solve it or gamble now","— 🎡 تخمينات صحيحة:":"— 🎡 lucky guesses:",
+"🪤 دورك تزرع الفخاخ: اضغط على مربع من المربعات المضيئة أمام العدّاء فيُزرع فخ.":"🪤 Your turn to plant traps: tap a glowing square ahead of the runner to plant a trap.","ضع فخاً واحداً":"Place one trap","ازرع فخّين":"Plant two traps","واترك مربعاً آمناً. ولكل فخ نوع مفاجئ: نابض أو حفرة أو شبكة أو جليد أو لغم 💣":"and leave one square safe. Each trap gets a surprise type: spring, pit, net, ice or mine 💣",
+"👀 الآن راقب: إن داس العدّاء على فخّك تأخذ":"👀 Now watch: if the runner steps on your trap you get",". وترى سؤاله أعلى الشاشة.":". You can see their question at the top.","💥 وقع في فخك! تراجع صفاً":"💥 They hit your trap! Knocked back a row","👆 اضغط مربعاً واحداً لتضع فخّك —":"👆 Tap one square to place your trap —","و":"and","يضع الآخر":"places the other","ث)":"s)","✅ وضعتَ فخّك — بانتظار":"✅ Trap placed — waiting for","يضعان الفخاخ في هذه الخطوة":"are setting traps this step",
+"👆 اضغط على":"👆 Tap","مربع واحد":"one square","من المضيئة لتضع":"of the glowing ones to place","فخاً":"a trap","فخّين":"two traps","🧠 يفكّر في:":"🧠 Thinking about:","✅ حلّ التحدي — يعرف الطريق الآمن":"✅ Solved it — knows the safe way","❌ أخطأ — سيخمّن":"❌ Got it wrong — will guess","• (وُضعت تلقائياً)":"• (placed automatically)",
+"🏁 وصلت إلى خط النهاية!":"🏁 You reached the finish!","وصل إلى خط النهاية":"reached the finish","⏱ انتهى الوقت — بقي لك":"⏱ Time’s up — rows left:","🪤 أوقفته! بقي له":"🪤 You stopped them! Rows left:","إجابات صحيحة":"correct answers","• تخمينات صحيحة":"• lucky guesses","• فخاخ":"• traps","• عجلة الحظ":"• Wheel of Luck","🔁 الجولة القادمة:":"🔁 Next round:","أنت تضع الفخاخ":"you set traps","أنت تجري":"you run",
+"عجلة الحظ!":"Wheel of Luck!","أصبت في 3 تخمينات متتالية — هذه مكافأتك!":"3 lucky guesses in a row — here is your reward!","أصاب في 3 تخمينات متتالية — جاءت عجلة الحظ!":"made 3 lucky guesses in a row — Wheel of Luck time!","معك كرة":"You have the","حمراء 🔴":"red ball 🔴","اضغط":"Press","🚀 إطلاق":"🚀 Launch",
+"في اللحظة المناسبة: شريط القوة يتحرك، وكلما زادت القوة ذهبت الكرة أبعد.":"at the right moment: the power bar moves, and more power sends the ball further.","حيث تتوقف كرتك تكون جائزتك:":"Where your ball stops is your prize:","نقطة لك، أو":"point for you, or","من خصمك، أو":"from your rival, or","تنزيل خصمك درجة، أو":"push your rival down a row, or","+1 لك و−1 له. لا تبالغ في القوة: إن خرجت الكرة من الخط تخسر نقطة.":"+1 for you and −1 for them. Don’t overdo it: if the ball leaves the track you lose a point.",
+"خصمك معه كرة":"Your rival has the","زرقاء 🔵":"blue ball 🔵","ويحاول أن يمسك كرتك. وأنت أيضاً تستطيع إمساك كرته: اضغط":"and tries to catch yours. You can catch theirs too: press","✋ التقاط":"✋ Catch","حين تكون داخل":"while it is inside","الدائرة الصفراء":"the yellow circle","، ومع خصمك كرة":", and your rival has the","هدفك أن تمنعه من التقدم: اضغط":"Your goal is to stop them: press","حين تكون كرته الحمراء داخل":"while their red ball is inside","في الوسط، فتُلغى مكافأته ويتراجع خطوة، وتكسب أنت نقطة.":"in the middle, cancelling their prize, and you win a point.","أو اضغط":"or press","لتصطدم كرتك بكرته في الوسط، فتُلغى مكافأته.":"so your ball hits theirs in the middle and cancels their prize.","انتبه: هو أيضاً يستطيع إمساك كرتك.":"Careful: they can also catch your ball.","تبدأ بعد":"Starts in",
+"🎡 عجلة الحظ":"🎡 Wheel of Luck","(العدّاء)":"(runner)","(واضع الفخاخ)":"(trap setter)","🔴 كرتك حمراء: أطلقها بقوة مناسبة • ✋ أمسك الزرقاء وهي في الدائرة الصفراء":"🔴 Your ball is red: launch it with the right power • ✋ catch the blue one in the yellow circle","🔵 كرتك زرقاء: ✋ أمسك الحمراء وهي في الدائرة الصفراء • أو أطلق كرتك لتصطدم بها":"🔵 Your ball is blue: ✋ catch the red one in the yellow circle • or launch yours to hit it",
+"تشاهد عجلة الحظ.":"You are watching the Wheel of Luck.","محاولة إمساك واحدة فقط لكل لاعب.":"Only one catch attempt per player.","✋ تمّت المحاولة":"✋ Attempt used","التقط الكرة الحمراء!":"caught the red ball!","التقط الكرة الزرقاء!":"caught the blue ball!","💥 اصطدمت الكرتان في المركز":"💥 The balls collided in the middle","🔴 توقفت الحمراء عند:":"🔴 The red ball stopped at:","نقطة • 🪤":"pts • 🪤","و⬇️ ينزل درجة":"and ⬇️ drops a row","⏱ مهلة الإطلاق:":"⏱ Launch window:","ث":"s","⏳ الكرتان في الطريق...":"⏳ Balls on their way...","القوة":"Power","← ستتوقف عند:":"→ will stop at:",
+"🏆 فزت بالمركز الأول!":"🏆 You took first place!","في المركز الأول":"in first place","🤝 تعادل في الصدارة":"🤝 Tie for first","المركز":"Rank","اللاعب":"Player","النقاط":"Points","مباراة جديدة":"New match","بانتظار المضيف لبدء مباراة جديدة":"Waiting for the host to start a new match","🏆 فزت!":"🏆 You won!","يفوز":"wins","🤝 تعادل":"🤝 Draw","🏆 فاز فريقك!":"🏆 Your team won!","🏆 فاز الفريق":"🏆 Winning team:","الفريق":"Team","(⚡ خطف":"(⚡ snatched","الدورة":"Rotation","(وصل 🏁)":"(finished 🏁)","(لم يصل)":"(did not finish)","انطلق!":"Go!",
+"🔬 علوم":"🔬 Science","علوم":"Science","🌍 جغرافيا":"🌍 Geography","جغرافيا":"Geography","📜 تاريخ":"📜 History","تاريخ":"History","⚽ رياضة":"⚽ Sports","رياضة":"Sports","🕌 دين":"🕌 Religion","دين":"Religion","🤯 أشياء رهيبة":"🤯 Amazing facts","أشياء رهيبة":"Amazing facts","💡 عامة":"💡 General","عامة":"General","ثقافة وفنون":"Culture & Arts",
+"🗓️ تحدّي اليوم #":"🗓️ Daily Challenge #","تحدّي اليوم #":"Daily Challenge #","اللوحة والفخاخ والأسئلة نفسها لكل الناس اليوم":"Same board, traps and questions for everyone today","🗓️ كيف تلعب تحدّي اليوم؟":"🗓️ How does the Daily Challenge work?",
+"🏃 أوصل بطلك إلى خط النهاية 🏁. أمامه في كل خطوة حتى 3 مربعات،":"🏃 Get your hero to the finish 🏁. Each step has up to 3 squares ahead,","واحد فقط آمن":"only one is safe","والباقي فخاخ 🪤.":"and the rest are traps 🪤.","🧠 أجب عن السؤال إجابةً صحيحة فيضيء لك المربع الآمن ✅ ←":"🧠 Answer correctly and the safe square lights up ✅ →","🎲 أو جازف واضغط مربعاً مباشرة: إن نجوت ←":"🎲 Or gamble and tap a square: if you survive →",
+"💥 الفخ يركلك صفاً للخلف ويأخذ قلباً ❤️. معك 3 قلوب فقط. 🍀 ثلاث مجازفات ناجحة متتالية =":"💥 A trap knocks you back and costs a heart ❤️. You only have 3 hearts. 🍀 Three lucky guesses in a row =","⏱ لكل سؤال 25 ثانية. الفخاخ لا تتغير اليوم، فتذكّر أماكنها إن انكشفت لك.":"⏱ 25 seconds per question. Traps stay put all day, so remember them once revealed.",
+"متابعة":"Continue","ابدأ التحدي":"Start the challenge","• السؤال":"• Question","✅ أحسنت! اضغط المربع":"✅ Well done! Tap the","الأخضر":"green square","❌ إجابة خاطئة — لم يبق إلا أن":"❌ Wrong answer — now you have to","تجازف":"gamble","🧠 أجب لتكشف الطريق الآمن، أو جازف الآن 🎲":"🧠 Answer to reveal the safe way, or gamble now 🎲","وخسرت قلباً":"and you lost a heart","👣 نجوت!":"👣 Safe!",
+"خلف خطوط العدو 🏃 تحدّي اليوم #":"Behind Enemy Lines 🏃 Daily Challenge #","🏁 وصلت":"🏁 Made it","💀 سقطت":"💀 Fell","وصلت خلف خطوط العدو!":"You made it behind enemy lines!","سقطت في الفخاخ هذه المرة":"The traps got you this time","الوقت":"Time","لعبت":"Played","فوز":"Wins","🔥 السلسلة":"🔥 Streak","أطول سلسلة":"Best streak","📤 شارك نتيجتك":"📤 Share your result","التحدي القادم بعد":"Next challenge in","✅ نُسخت النتيجة — الصقها لأصدقائك":"✅ Result copied — paste it to your friends","انسخ النتيجة:":"Copy the result:",
+"🎉 شارك المربعات الملونة وتحدَّ أصدقاءك على اللوحة نفسها":"🎉 Share your coloured squares and challenge friends on the same board","غداً لوحة جديدة وفخاخ جديدة 🪤":"Tomorrow: a new board and new traps 🪤","أنهيته":"done","انتهى":"over","لوحة واحدة وفخاخ واحدة لكل الناس اليوم — محاولة واحدة فقط، ثم شارك نتيجتك":"One board and one set of traps for everyone today — one attempt only, then share your result","• 🔥 سلسلتك":"• 🔥 Your streak",
+"محايدة: لا شيء":"Neutral: nothing","⭐ +1 نقطة لك":"⭐ +1 point for you","✂️ −1 نقطة من خصمك":"✂️ −1 point from your rival","⬇️ تنزيل خصمك درجة":"⬇️ Push your rival down a row","👑 +1 لك و−1 لخصمك":"👑 +1 for you, −1 for your rival","خروج: −1 نقطة لك":"Out: −1 point for you","لم تعبر (0)":"Didn’t cross (0)","اصطدام (0)":"Collision (0)","المباراة جارية بالفعل":"The match has already started","الغرفة ممتلئة (12 لاعباً كحد أقصى)":"The room is full (12 players max)",
+"🌐 English":"🌐 English","🌐 العربية":"🌐 العربية","لغة الأسئلة:":"Question language:","العربية":"Arabic","الإنجليزية":"English",
+"من":"of","،":",","؟":"?"
+};
+var I18N_KEYS=null;
+function trText(s){
+  if(!/[؀-ۿ،؟]/.test(s))return s;
+  if(!I18N_KEYS)I18N_KEYS=Object.keys(I18N).sort(function(a,b){return b.length-a.length;}).map(function(k){
+    return {k:k,v:I18N[k],re:new RegExp('(^|[^\\u0600-\\u06FF])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\u0600-\\u06FF])','g')};});
+  var t=s.trim();if(I18N[t]!=null)return s.replace(t,I18N[t]);
+  for(var i=0;i<I18N_KEYS.length;i++){var e=I18N_KEYS[i];if(s.indexOf(e.k)>=0)s=s.replace(e.re,function(m,p){return p+e.v;});}
+  return s;
+}
+function trNode(root){
+  if(LANG!=='en'||!root)return;
+  if(root.nodeType===3){var v=root.nodeValue,n=trText(v);if(n!==v)root.nodeValue=n;return;}
+  if(root.nodeType!==1||root.id==='mute')return;
+  ['placeholder','title','aria-label'].forEach(function(a){var x=root.getAttribute&&root.getAttribute(a);if(x){var y=trText(x);if(y!==x)root.setAttribute(a,y);}});
+  var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null,false),nd,list=[];while((nd=w.nextNode()))list.push(nd);
+  list.forEach(function(t){if(t.parentNode&&t.parentNode.nodeName==='SCRIPT')return;if(isQNode(t))return;var v=t.nodeValue,n=trText(v);if(n!==v)t.nodeValue=n;});
+  if(root.querySelectorAll)Array.prototype.forEach.call(root.querySelectorAll('[placeholder],[title],[aria-label]'),function(el){['placeholder','title','aria-label'].forEach(function(a){var x=el.getAttribute(a);if(x){var y=trText(x);if(y!==x)el.setAttribute(a,y);}});});
+}
+function T(s){return LANG==='en'?trText(s):s;}
+
+function isQNode(n){for(var p=n.parentNode,i=0;p&&i<7;p=p.parentNode,i++){var c=p.className;if(typeof c==='string'&&/(^| )(qt|qtx|opts|notr)( |$)/.test(c))return true;}return false;}
+function applyLang(){var h=document.documentElement;h.lang=LANG;h.dir=LANG==='en'?'ltr':'rtl';
+  if(LANG==='en'){document.title='Behind Enemy Lines';trNode(document.body);
+    try{new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='characterData'){if(!isQNode(m.target))trNode(m.target);}else for(var i=0;i<m.addedNodes.length;i++){var nd=m.addedNodes[i];if(nd.nodeType===3&&isQNode(nd))continue;trNode(nd);}});}).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}}}
+
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function getPid(){var p=null;try{p=sessionStorage.getItem('bel_pid');}catch(e){}if(!p){p='p'+Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('bel_pid',p);}catch(e){}}return p;}
 var xLocal={id:0,t0:0},peer=null,conn=null,server=null,isHost=false,roomCode='',myPid=getPid(),myName='',V=null,stageKey='',stepKey='',lastEv=null,rcv=0,trapPick=[];
@@ -1706,15 +2318,17 @@ $('#hname').value=lsGet('bel_name','');
 function tipsLabel(){$('#btips').textContent=TIPS_ON?'💡 التلميحات التعليمية: تعمل (اضغط للإيقاف)':'💡 التلميحات التعليمية: متوقفة (اضغط للتشغيل)';}
 function sndLabel(){$('#bsnd').textContent=SND_ON?'🔊 المؤثرات الصوتية: تعمل (اضغط للكتم)':'🔇 المؤثرات الصوتية: مكتومة (اضغط للتشغيل)';var m=$('#mute');if(m)m.textContent=SND_ON?'🔊':'🔇';}
 function togSnd(){SND_ON=!SND_ON;lsSet('bel_snd',SND_ON);sndLabel();if(SND_ON)sfx('ok');}
-sndLabel();$('#bsnd').onclick=togSnd;$('#mute').onclick=togSnd;
+sndLabel();$('#bsnd').onclick=togSnd;
+$('#blang').textContent=LANG==='en'?'🌐 العربية':'🌐 English';$('#blang').onclick=function(){LANG=LANG==='en'?'ar':'en';lsSet('bel_lang',LANG);location.reload();};
+applyLang();$('#mute').onclick=togSnd;
 tipsLabel();$('#btips').onclick=function(){TIPS_ON=!TIPS_ON;lsSet('bel_tips_on',TIPS_ON);if(TIPS_ON){TIPS={};lsSet('bel_tips',TIPS);}tipsLabel();};
 // ---- training mode: local server + bot opponent, works offline ----
 var BOT='bot-trainer';
 $('#btrain').onclick=function(){
-  myName=$('#hname').value.trim()||'أنت';isHost=true;roomCode='تدريب';TIPS_ON=true;TIPS={};lsSet('bel_tips',TIPS);
+  myName=$('#hname').value.trim()||T('أنت');isHost=true;roomCode='تدريب';TIPS_ON=true;TIPS={};lsSet('bel_tips',TIPS);
   server=new Server(myPid);server.connect(localConn);send({t:'hello',name:myName,pid:myPid});
   var bc={send:function(){}};server.connect(bc);server.handle(bc,{t:'hello',name:'🤖 المدرّب',pid:BOT});
-  server.handle(bc,{t:'team',team:1});server.S.pack='easy';server.handle(localConn,{t:'team',team:0});
+  server.handle(bc,{t:'team',team:1});server.S.pack=LANG==='en'?'bal':'easy';server.S.lang=LANG;server.handle(localConn,{t:'team',team:0});
   server.S.training=true;server.S.turns=false;server.startMatch();server.S.duels[0].rounds=2;setInterval(function(){botTick(bc);},450);
 };
 function botTick(bc){
@@ -1737,7 +2351,7 @@ function mkCode(){var a='ABCDEFGHJKMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<5;i
 $('#bhost').onclick=function(){
   if(!needName()||!peerOk())return;isHost=true;roomCode=mkCode();ovl('⏳ جارٍ إنشاء الغرفة...');
   peer=new Peer('bel-'+roomCode,{debug:0});
-  peer.on('open',function(){ovl('');if(!server){server=new Server(myPid);server.connect(localConn);}send({t:'hello',name:myName,pid:myPid});});
+  peer.on('open',function(){ovl('');if(!server){server=new Server(myPid);server.S.lang=LANG;server.connect(localConn);}send({t:'hello',name:myName,pid:myPid});});
   peer.on('connection',function(c){c.on('open',function(){server.connect(c);});c.on('data',function(m){server.handle(c,m);});
     c.on('close',function(){server.disconnect(c);});c.on('error',function(){server.disconnect(c);});});
   peer.on('disconnected',function(){try{peer.reconnect();}catch(e){}});
@@ -1802,7 +2416,8 @@ function renderLobby(){
   var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a,h='';
   function tg(k,l){return '<button data-m="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.mode===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
   function tp(k,l){return '<button data-p="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.pack===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
-  if(host)h+='<div class="legend" style="margin-bottom:4px">الأسئلة:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tp('bal','⚖️ متوازنة (الكل)')+tp('mid','🎯 فوق المتوسط')+tp('main','🔥 صعبة جداً')+tp('easy','⚽ رياضة وعامة')+'</div>';
+  h+='<p class="legend" style="text-align:center;margin:0 0 6px">لغة الأسئلة: <b>'+(V.lang==='en'?'الإنجليزية':'العربية')+'</b></p>';
+  if(host)h+='<div class="legend" style="margin-bottom:4px">الأسئلة:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tp('bal','⚖️ متوازنة (الكل)')+(V.lang==='en'?'':tp('mid','🎯 فوق المتوسط')+tp('main','🔥 صعبة جداً')+tp('easy','⚽ رياضة وعامة'))+'</div>';
   else h+='<p class="legend" style="text-align:center">الأسئلة: <b>'+(V.pack==='easy'?'⚽ رياضة وعامة':V.pack==='main'?'🔥 صعبة جداً':V.pack==='mid'?'🎯 فوق المتوسط':'⚖️ متوازنة')+'</b></p>';
   if(host)h+='<div class="legend" style="margin-bottom:4px">طريقة اللعب:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tg('team','👥 فرق')+tg('ffa','🧍 كلٌّ لنفسه')+'</div>';
   function tt(k,l){return '<button data-t="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(String(!!V.turns)===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
@@ -1843,7 +2458,7 @@ function camTo(id,row){var w=document.getElementById(id+'w'),b=document.getEleme
   var ch=c0.offsetHeight,gap=4;if(!ch)return;if(!w._fit){w.style.maxHeight=Math.round((ch+gap)*VIEW_ROWS+12)+'px';w._fit=1;}
   var top=b.offsetTop+ce.offsetTop-w.clientHeight*0.58+ch/2;top=Math.max(0,Math.min(top,w.scrollHeight-w.clientHeight));
   if(!w._cam){w._cam=1;w.scrollTop=top;}else if(Math.abs(w.scrollTop-top)>2){try{w.scrollTo({top:top,behavior:'smooth'});}catch(e){w.scrollTop=top;}}
-  var l=document.getElementById(id+'l');if(l){l.textContent=row<=0?'🏁 وصل!':row===1?'🏁 باقي صف واحد':row===2?'🏁 باقي صفّان':'🏁 باقي '+row+(row<=10?' صفوف':' صفاً');l.classList.toggle('near',row<=3);}}
+  var l=document.getElementById(id+'l');if(l){l.textContent=LANG==='en'?(row<=0?'🏁 Finished!':'🏁 '+row+(row===1?' row left':' rows left')):row<=0?'🏁 وصل!':row===1?'🏁 باقي صف واحد':row===2?'🏁 باقي صفّان':'🏁 باقي '+row+(row<=10?' صفوف':' صفاً');l.classList.toggle('near',row<=3);}}
 function cell(id,r,c){return document.querySelector('#'+id+' [data-r="'+r+'"][data-c="'+c+'"]');}
 function dirOf(pos,r,c){for(var d in DIRS)if(pos[0]+DIRS[d][0]===r&&pos[1]+DIRS[d][1]===c)return d;return null;}
 // paint: o={pos,cands,traps,safe,stun,go,picks}
@@ -2240,6 +2855,13 @@ function dBuild(key){
     got.forEach(function(c){walls.push(r+','+c);});}
   var safe={},tt={};for(var rr=0;rr<ROWS;rr++)for(var cc=0;cc<COLS;cc++){var cs=candidates([rr,cc],walls);if(cs.length){var sk=rr+','+cc;safe[sk]=cs[ri(cs.length)];tt[sk]={};cs.forEach(function(d){tt[sk][d]=TKINDS[ri(TKINDS.length)];});}}
   var used={},qs=[];
+  if(LANG==='en'){var KQ=kbBuild(),CM={'رياضة':'spo','علوم':'sci','جغرافيا':'geo','تاريخ':'his','أشياء رهيبة':'gen','عامة':'gen','دين':'cul'};
+    for(var q2=0;q2<36;q2++){var p2=DPAT[q2%DPAT.length],tr2=p2[0]==='E'?1:p2[0]==='M'?2:3,cc2=CM[p2[1]]||'gen',pl=[];
+      for(var x2=0;x2<KQ.length;x2++){var z=KQ[x2];if(z.t===tr2&&z.c===cc2&&!used[z.k])pl.push(z);}
+      if(!pl.length)for(x2=0;x2<KQ.length;x2++)if(KQ[x2].t===tr2&&!used[KQ[x2].k])pl.push(KQ[x2]);
+      var zb=pl[ri(pl.length)];used[zb.k]=1;var o2=zb.en[1].slice();for(var m2=o2.length-1;m2>0;m2--){var w2=ri(m2+1),tq=o2[m2];o2[m2]=o2[w2];o2[w2]=tq;}
+      qs.push({cat:KB_CATS[zb.c][1],text:zb.en[0],o:o2,ans:o2.indexOf(zb.en[1][0]),tier:tr2,emo:zb.e});}
+    return {walls:walls,safe:safe,tt:tt,qs:qs};}
   for(var q=0;q<36;q++){var p=DPAT[q%DPAT.length],src=p[0]==='E'?EASY:p[0]==='M'?MID:p[0]==='H'?BAL_H:BANK,pool=[];
     for(var x=0;x<src.length;x++)if(src[x][0]===p[1]&&!used[src[x][1]])pool.push(x);
     if(!pool.length)for(x=0;x<src.length;x++)if(!used[src[x][1]])pool.push(x);
@@ -2325,7 +2947,7 @@ function dStats(){var st=DG.st,S=lsGet('bel_dstats',{played:0,wins:0,streak:0,ma
   if(st.win){S.wins++;var y=new Date();y.setDate(y.getDate()-1);S.streak=(S.last===dKey(y))?S.streak+1:1;S.last=st.key;S.max=Math.max(S.max,S.streak);S.best=Math.max(S.best||0,st.score);}
   else S.streak=0;lsSet('bel_dstats',S);}
 function dShareText(){var st=DG.st,h='';for(var i=0;i<DHEARTS;i++)h+=i<st.hearts?'❤️':'🖤';
-  return 'خلف خطوط العدو 🏃 تحدّي اليوم #'+st.num+'\n'+(st.win?'🏁 وصلت':'💀 سقطت')+' • ⭐ '+st.score+' • ⏱ '+fmtT(st.time)+' • '+h+'\n'+st.row.join('')+'\nhttps://behind-enemy-lines.onrender.com';}
+  return T('خلف خطوط العدو 🏃 تحدّي اليوم #')+st.num+'\n'+T(st.win?'🏁 وصلت':'💀 سقطت')+' • ⭐ '+st.score+' • ⏱ '+fmtT(st.time)+' • '+h+'\n'+st.row.join('')+'\nhttps://behind-enemy-lines.onrender.com';}
 function dResult(){
   var st=DG.st,S=lsGet('bel_dstats',{played:0,wins:0,streak:0,max:0});
   $('#dq').innerHTML='<div class="dintro" style="text-align:center"><div style="font-size:46px">'+(st.win?'🏆':'💀')+'</div><h3>'+(st.win?'وصلت خلف خطوط العدو!':'سقطت في الفخاخ هذه المرة')+'</h3>'+
@@ -2334,7 +2956,7 @@ function dResult(){
    '<button class="btn red" id="dshare">📤 شارك نتيجتك</button><div class="legend" style="text-align:center">التحدي القادم بعد <b id="dcount" style="direction:ltr;display:inline-block">'+dLeft()+'</b></div></div>';
   $('#dshare').onclick=function(){var t=dShareText();
     if(navigator.share){navigator.share({text:t}).catch(function(){});return;}
-    try{navigator.clipboard.writeText(t).then(function(){$('#dshare').textContent='✅ نُسخت النتيجة — الصقها لأصدقائك';});}catch(e){prompt('انسخ النتيجة:',t);}};
+    try{navigator.clipboard.writeText(t).then(function(){$('#dshare').textContent=T('✅ نُسخت النتيجة — الصقها لأصدقائك');});}catch(e){prompt(T('انسخ النتيجة:'),t);}};
   paint('db',{pos:st.pos,walls:DG.b.walls});
   $('#dst').textContent=st.win?'🎉 شارك المربعات الملونة وتحدَّ أصدقاءك على اللوحة نفسها':'غداً لوحة جديدة وفخاخ جديدة 🪤';
 }
