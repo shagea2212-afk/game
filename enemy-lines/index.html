@@ -116,6 +116,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 .bwrap .board{margin-top:0;margin-bottom:0}
 .bleft{position:sticky;bottom:0;display:block;text-align:center;font-size:12px;color:var(--mu);background:linear-gradient(transparent,#0e0f13cc 40%);padding:10px 0 3px;margin-top:-26px;pointer-events:none}
 .bleft.near{color:var(--gold);font-weight:700}
+.tier{font-size:11px;padding:1px 7px;border-radius:9px;margin-inline-start:4px;font-weight:700}.tier.t1{background:#2ecc7126;color:#5fe39a}.tier.t2{background:#ffb21e26;color:var(--gold)}.tier.t3{background:#ff475726;color:#ff7b87}
 #mute{position:fixed;left:8px;bottom:8px;z-index:13;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#0008;color:#fff;font-size:18px;padding:0;line-height:38px}
 .dcard{background:linear-gradient(135deg,#2a1840,#1d1e24 60%);border-color:#6c4cff88}
 #bdaily{background:linear-gradient(90deg,#ff4757,#ffb21e);border:0;color:#1b0f00;font-size:19px;box-shadow:0 6px 20px #ff475755}
@@ -344,7 +345,6 @@ var BANK=[
 ['رياضة','في أي عام فازت السعودية بكأس آسيا لأول مرة؟',['1984','1988','1996','1976']],
 ['رياضة','كم مرة فاز المنتخب السعودي بكأس آسيا؟',['3','2','4','1']],
 ['رياضة','أين أقيمت أول بطولة لكأس العالم لكرة القدم عام 1930؟',['الأوروغواي','البرازيل','إيطاليا','فرنسا']],
-['رياضة','من الهدّاف التاريخي لبطولات كأس العالم؟',['ميروسلاف كلوزه','رونالدو البرازيلي','ليونيل ميسي','بيليه']],
 ['رياضة','في أي مدينة أقيمت أول ألعاب أولمبية حديثة عام 1896؟',['أثينا','باريس','لندن','روما']],
 ['رياضة','كم دقيقة مدة الربع الواحد في مباريات دوري NBA؟',['12','10','15','20']],
 ['رياضة','أيّ منتخب فاز بأكبر عدد من ألقاب كأس العالم لكرة القدم؟',['البرازيل','ألمانيا','إيطاليا','الأرجنتين']],
@@ -511,7 +511,6 @@ var SPORTMISC=[
 ['كم دقيقة مدة الشوط الواحد في كرة اليد؟','30',['20','35','45']],
 ['كم دقيقة مدة مباراة الرغبي (اتحاد الرغبي) الأصلية؟','80',['90','70','60']],
 ['كم دقيقة مدة الربع الواحد في مباريات دوري NBA؟','12',['10','15','20']],
-['من الهدّاف التاريخي لبطولات كأس العالم لكرة القدم؟','ميروسلاف كلوزه',['رونالدو البرازيلي','ليونيل ميسي','بيليه']],
 ['من هزمت السعودية 2-1 في كأس العالم 2022؟','الأرجنتين',['المكسيك','بولندا','فرنسا']],
 ['أيّ دولة ستستضيف كأس العالم 2034؟','السعودية',['قطر','المغرب','مصر']],
 ['أيّ منتخب عربي بلغ نصف نهائي كأس العالم 2022؟','المغرب',['السعودية','تونس','قطر']],
@@ -1205,7 +1204,6 @@ var MID_RAW={
 ['أيّ منتخب فاز بكأس العالم 2018؟',['فرنسا','كرواتيا','بلجيكا','إنجلترا']],
 ['أيّ دولة استضافت كأس العالم 2010؟',['جنوب أفريقيا','البرازيل','ألمانيا','المغرب']],
 ['من الفائز بأول نسخة من كأس العالم للأندية بنظامها الموسّع 2025؟',['تشيلسي','باريس سان جيرمان','ريال مدريد','مانشستر سيتي']],
-['كم مرة فاز المنتخب البرازيلي بكأس العالم؟',['5','4','6','3']],
 ['ما المنتخب الوحيد الذي شارك في كل نسخ كأس العالم؟',['البرازيل','ألمانيا','الأرجنتين','إيطاليا']],
 ['كم يستمر الشوط الإضافي الواحد في كرة القدم؟',['15 دقيقة','10 دقائق','20 دقيقة','30 دقيقة']],
 ['ما الرياضة التي يُستخدم فيها مصطلح «سليم دانك»؟',['كرة السلة','الكرة الطائرة','التنس','كرة اليد']]
@@ -1302,6 +1300,34 @@ function makeMidQ(id){
   saveSeen();
   var m=mcFrom(b[2]),q={id:id,kind:'mc',cat:b[0],text:b[1],o:m.o,ans:m.ans};if(b[3])q.emo=1;return q;
 }
+
+// ===== Pack «⚖️ متوازنة»: every question we have, served in a balanced, adaptive mix =====
+// tier 1 = easy pack, tier 2 = upper-medium pack, tier 3 = the hard bank minus obscure geography and rare elements
+var BAL_E=EASY,BAL_M=MID,BAL_H=(function(){var mt={},ez={};MID.forEach(function(b){mt[b[1]]=1;});ELEMENTS.forEach(function(e){ez[e[1]]=e[0];ez[e[2]]=e[0];});
+  return BANK.filter(function(b){var t=b[1],m;if(mt[t])return false;
+    if(/^ما عاصمة |لأيّ دولة هذا العلم|في أيّ قارة تقع/.test(t))return false;
+    if(t.indexOf('الهدّاف التاريخي لبطولات كأس العالم')>=0)return false;
+    if((m=t.match(/عدده الذري (\d+)/))&&+m[1]>30)return false;
+    if((m=t.match(/رمزه الكيميائي (\w+)/))&&(ez[m[1]]||99)>56)return false;
+    if((m=t.match(/^ما الرمز الكيميائي لعنصر (.+)؟$/))&&(ez[m[1]]||99)>56)return false;
+    return true;});})();
+var BAL_POOL=[null,BAL_E,BAL_M,BAL_H];
+var BAL_W=[[60,40,0],[40,50,10],[20,60,20],[10,55,35],[5,50,45]];
+var BAL_CATS=['علوم','علوم','جغرافيا','تاريخ','رياضة','رياضة','دين','أشياء رهيبة','عامة'],BCATQ=[],BLAST=null;
+function balTier(lv){var w=BAL_W[Math.max(0,Math.min(4,Math.floor(lv)))],r=rnd(100);return r<w[0]?1:r<w[0]+w[1]?2:3;}
+function balPick(t,cat){var P=BAL_POOL[t],pool=[];for(var i=0;i<P.length;i++)if(P[i][0]===cat&&!SEEN[P[i][1]])pool.push(i);
+  var G=t===2?MID_GENS[cat]:t===3?GENS[cat]:null;
+  if(G&&(!pool.length||rnd(t===3?5:4)<2)){for(var k=0;k<40;k++){var c=G[rnd(G.length)]();if(!c)continue;var u=c[2].filter(function(x,j,a){return a.indexOf(x)===j;});if(u.length!==4)continue;var key=qKey(c);if(SEEN[key])continue;SEEN[key]=1;return c;}}
+  if(!pool.length)return null;var b=P[pool[rnd(pool.length)]];SEEN[b[1]]=1;return b;}
+function makeBalQ(id,lv){
+  var cat=null;for(var g=0;g<20&&!cat;g++){if(!BCATQ.length){for(var t2=0;t2<100;t2++){BCATQ=shuffle(BAL_CATS.slice());var ok=BCATQ[0]!==BLAST;for(var j=1;j<BCATQ.length;j++)if(BCATQ[j]===BCATQ[j-1])ok=false;if(ok)break;}}cat=BCATQ.shift();}
+  BLAST=cat;var t=balTier(lv),order=t===1?[1,2,3]:t===2?[2,1,3]:[3,2,1],b=null,tier=t;
+  for(var i=0;i<3&&!b;i++){b=balPick(order[i],cat);if(b)tier=order[i];}
+  if(!b){[1,2,3].forEach(function(k){BAL_POOL[k].forEach(function(x){if(x[0]===cat)delete SEEN[x[1]];});});b=balPick(t,cat)||balPick(2,cat)||balPick(1,cat);if(b)tier=BAL_POOL[t].indexOf(b)>=0?t:BAL_POOL[2].indexOf(b)>=0?2:1;}
+  if(!b){b=BAL_M[rnd(BAL_M.length)];tier=2;}
+  if(seenCount()>40000)SEEN={};saveSeen();
+  var m=mcFrom(b[2]),q={id:id,kind:'mc',cat:b[0],text:b[1],o:m.o,ans:m.ans,tier:tier};if(b[3])q.emo=1;return q;
+}
 var A_DEC=0.6, CENTER=0.5, CATCH_R=0.07, COLL_MS=80, XWIN=4000, XEND=6300;
 function powerAt(ms){var x=(ms/700)%2;return 1-Math.abs(x-1);}
 function ballOf(t,p){var s=0.35+p*0.73,v0=Math.sqrt(2*A_DEC*s);return {t:t,p:p,s:s,v0:v0,tStop:v0/A_DEC};}
@@ -1330,9 +1356,9 @@ function makeWalls(){var w=[];for(var r=1;r<=ROWS-2;r++){var n=rnd(3),cols=shuff
   cols.forEach(function(c){if(got.length>=n)return;if(got.some(function(g){return Math.abs(g-c)<2;}))return;got.push(c);});got.forEach(function(c){w.push(r+','+c);});}return w;}
 function openPos(pos,walls){if(!walls||walls.indexOf(pos[0]+','+pos[1])<0)return pos;for(var k=1;k<COLS;k++){var a=pos[1]-k,b=pos[1]+k;
   if(a>=0&&walls.indexOf(pos[0]+','+a)<0)return [pos[0],a];if(b<COLS&&walls.indexOf(pos[0]+','+b)<0)return [pos[0],b];}return pos;}
-function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair',mode:'team',pack:'mid',turns:true};var self=this;this.iv=setInterval(function(){self.tick();},150);}
+function Server(hostPid){this.hostPid=hostPid;this.conns=[];this.used={};this.qid=0;this.sid=0;this.S={phase:'lobby',players:[],size:1,format:'pair',mode:'team',pack:'bal',turns:true};var self=this;this.iv=setInterval(function(){self.tick();},150);}
 Server.prototype.now=function(){return Date.now();};
-Server.prototype.mkQ=function(){var p=this.S.pack;return p==='easy'?makeEasyQ(++this.qid):p==='main'?makeQ(this.used,++this.qid):makeMidQ(++this.qid);};
+Server.prototype.mkQ=function(pid){var p=this.S.pack;if(p==='bal'){this.lv=this.lv||{};return makeBalQ(++this.qid,this.lv[pid]==null?2:this.lv[pid]);}return p==='easy'?makeEasyQ(++this.qid):p==='main'?makeQ(this.used,++this.qid):makeMidQ(++this.qid);};
 Server.prototype.connect=function(c){this.conns.push({c:c,pid:null});};
 Server.prototype.entry=function(c){for(var i=0;i<this.conns.length;i++)if(this.conns[i].c===c)return this.conns[i];return null;};
 Server.prototype.player=function(pid){var ps=this.S.players;for(var i=0;i<ps.length;i++)if(ps[i].id===pid)return ps[i];return null;};
@@ -1364,7 +1390,7 @@ Server.prototype.handle=function(c,m){
     e.pid=pid;c.send({t:'welcome',pid:pid});this.push();return;
   }
   var me=this.player(e.pid);if(!me)return;var isHost=me.id===this.hostPid;
-  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;if(m.mode==='team'||m.mode==='ffa')S.mode=m.mode;if(m.pack==='main'||m.pack==='easy'||m.pack==='mid')S.pack=m.pack;if(m.turns===true||m.turns===false)S.turns=m.turns;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
+  if(m.t==='mode'){if(!isHost||S.phase!=='lobby')return;if(m.mode==='team'||m.mode==='ffa')S.mode=m.mode;if(m.pack==='main'||m.pack==='easy'||m.pack==='mid'||m.pack==='bal')S.pack=m.pack;if(m.turns===true||m.turns===false)S.turns=m.turns;if(m.format==='pair'||m.format==='league')S.format=m.format;this.push();return;}
   if(m.t==='team'){if(S.phase!=='lobby')return;me.team=m.team===1?1:0;this.push();return;}
   if(m.t==='start'){if(isHost&&S.phase==='lobby'&&!this.lobbyMsg())this.startMatch();return;}
   if(m.t==='again'){if(isHost&&S.phase==='end'){S.phase='lobby';S.players=S.players.filter(function(p){return p.on;});S.duels=null;this.push();}return;}
@@ -1387,7 +1413,7 @@ Server.prototype.handle=function(c,m){
   if(m.t==='pass'){
     if(me.id!==R.mover||st.qRes!=null||st.passed||R.passes>=MAX_PASS||m.sid!==st.id||(O&&O.state!=='done'))return;
     D.offer={id:++this.sid,q:st.q,from:R.mover,to:R.setter,state:'pending',until:n+OFFER_MS,locked:{}};
-    st.passed=true;R.passes++;R.stats.passes=(R.stats.passes||0)+1;st.q=this.mkQ();this.push();return;
+    st.passed=true;R.passes++;R.stats.passes=(R.stats.passes||0)+1;st.q=this.mkQ(R.mover);this.push();return;
   }
   if(m.t==='trap'&&st.setters.length>1){
     if(st.setters.indexOf(me.id)<0||st.traps||m.sid!==st.id||st.picks[me.id]||!Array.isArray(m.dirs)||m.dirs.length!==1)return;
@@ -1407,6 +1433,7 @@ Server.prototype.handle=function(c,m){
   if(m.t==='answer'){
     if(me.id!==R.mover||st.qRes!=null||m.sid!==st.id||n<R.stunUntil)return;
     st.qRes=(m.a===st.q.ans);if(st.qRes)R.stats.correct++;else R.stats.wrong++;
+    if(this.S.pack==='bal'){this.lv=this.lv||{};var lv0=this.lv[R.mover]==null?2:this.lv[R.mover];this.lv[R.mover]=Math.max(0,Math.min(4.5,lv0+(st.qRes?0.5:-1)));}
     this.push();return;
   }
   if(m.t==='move'){
@@ -1469,7 +1496,7 @@ Server.prototype.nextRound=function(D){
   D.offer=null;D.phase='ready';this.push();
 };
 Server.prototype.newStep=function(D,at){
-  var R=D.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos,R.walls),q:this.mkQ(),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
+  var R=D.R;R.step={id:++this.sid,pos:R.pos.slice(),cands:candidates(R.pos,R.walls),q:this.mkQ(R.mover),traps:null,qRes:null,setDl:Math.max(at,this.now())+SET_MS,startAt:at};
   var stp=R.step;stp.picks={};stp.owner={};
   if(R.others){var o=R.others,m=o.length,i0=(D.turns?(D.stepNo=(D.stepNo||0)+1)-1:R.stepNo++)*2;stp.setters=m<=2?o.slice():[o[i0%m],o[(i0+1)%m]];}else stp.setters=[R.setter];
   if(R.step.cands.length<=1)R.step.traps=[];
@@ -1623,8 +1650,8 @@ Server.prototype.view=function(pid){
         if(st&&D.phase==='run'){var s={id:st.id,pos:st.pos,cands:st.cands,trapsSet:!!st.traps,qRes:st.qRes,auto:!!st.auto,setLeft:st.traps?0:Math.max(0,st.setDl-n)};
           s.qid=st.q.id;s.passed=!!st.passed;s.passesLeft=MAX_PASS-R.passes;
           s.setters=st.setters;if(pid!==R.mover){s.picks=st.picks;s.mySet=st.setters.indexOf(pid)>=0&&!st.picks[pid]&&!st.traps;}
-          if(pid===R.setter||(R.others&&R.others.indexOf(pid)>=0)){s.traps=st.traps;s.tt=st.tt;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;s.q={cat:st.q.cat,text:st.q.text,o:st.q.o};if(st.qRes!=null)s.q.ans=st.q.ans;}
-          if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo};if(st.qRes!=null)s.q.ans=st.q.ans;
+          if(pid===R.setter||(R.others&&R.others.indexOf(pid)>=0)){s.traps=st.traps;s.tt=st.tt;s.qState=st.qRes==null?'thinking':st.qRes?'solved':'failed';s.qCat=st.q.cat;s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,tier:st.q.tier};if(st.qRes!=null)s.q.ans=st.q.ans;}
+          if(pid===R.mover){s.q={cat:st.q.cat,text:st.q.text,o:st.q.o,emo:!!st.q.emo,tier:st.q.tier};if(st.qRes!=null)s.q.ans=st.q.ans;
             if(st.qRes===true&&st.traps)s.safe=st.cands.filter(function(x){return st.traps.indexOf(x)<0;})[0];}
           v.D.R.step=s;}
       }}
@@ -1775,8 +1802,8 @@ function renderLobby(){
   var a=V.players.filter(function(p){return p.team===0;}).length,b=V.players.length-a,h='';
   function tg(k,l){return '<button data-m="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.mode===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
   function tp(k,l){return '<button data-p="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(V.pack===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
-  if(host)h+='<div class="legend" style="margin-bottom:4px">الأسئلة:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tp('mid','🎯 فوق المتوسط')+tp('main','🔥 صعبة جداً')+tp('easy','⚽ رياضة وعامة')+'</div>';
-  else h+='<p class="legend" style="text-align:center">الأسئلة: <b>'+(V.pack==='easy'?'⚽ رياضة وعامة':V.pack==='main'?'🔥 صعبة جداً':'🎯 فوق المتوسط')+'</b></p>';
+  if(host)h+='<div class="legend" style="margin-bottom:4px">الأسئلة:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tp('bal','⚖️ متوازنة (الكل)')+tp('mid','🎯 فوق المتوسط')+tp('main','🔥 صعبة جداً')+tp('easy','⚽ رياضة وعامة')+'</div>';
+  else h+='<p class="legend" style="text-align:center">الأسئلة: <b>'+(V.pack==='easy'?'⚽ رياضة وعامة':V.pack==='main'?'🔥 صعبة جداً':V.pack==='mid'?'🎯 فوق المتوسط':'⚖️ متوازنة')+'</b></p>';
   if(host)h+='<div class="legend" style="margin-bottom:4px">طريقة اللعب:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tg('team','👥 فرق')+tg('ffa','🧍 كلٌّ لنفسه')+'</div>';
   function tt(k,l){return '<button data-t="'+k+'" class="pl" style="flex:1;justify-content:center;border:2px solid '+(String(!!V.turns)===k?'var(--gold)':'transparent')+';color:var(--tx)">'+l+'</button>';}
   if(host)h+='<div class="legend" style="margin-bottom:4px">نظام الأدوار:</div><div style="display:flex;gap:6px;margin-bottom:8px">'+tt('true','🔁 دور بدور (خطوة لكلٍّ)')+tt('false','⏱ جولة كاملة')+'</div>';
@@ -1809,6 +1836,7 @@ function renderLobby(){
 $('#lstart').onclick=function(){send({t:'start'});};
 
 var VIEW_ROWS=7.4;
+function tierChip(t){return t?' <b class="tier t'+t+'">'+['','🟢 سهل','🟡 متوسط','🔴 صعب'][t]+'</b>':'';}
 function boardHtml(id){var h='<div class="bwrap" id="'+id+'w"><div class="board" id="'+id+'" style="grid-template-columns:repeat('+COLS+',1fr)">';
   for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++)h+='<div class="c" data-r="'+r+'" data-c="'+c+'"></div>';return h+'</div><div class="bleft" id="'+id+'l"></div></div>';}
 function camTo(id,row){var w=document.getElementById(id+'w'),b=document.getElementById(id),c0=cell(id,0,0),ce=cell(id,row,0);if(!w||!b||!c0||!ce)return;
@@ -1948,7 +1976,7 @@ function doMove(d){var R=V.R,s=R.step;if(!s||!s.trapsSet||R.stun-since()>0||s.ca
 document.addEventListener('keydown',function(e){if(dph()!=='run'||V.R.mover!==myPid)return;var d={ArrowUp:'u',ArrowLeft:'l',ArrowRight:'r'}[e.key];if(d){e.preventDefault();doMove(d);}});
 function buildQ(s){
   var q=s.q,b=$('#qbox');
-  b.innerHTML='<span class="qcat">'+esc(q.cat)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
+  b.innerHTML='<span class="qcat">'+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
     '<button class="passb" id="bpass">🔁 راهِن خصمك بهذا السؤال وخذ غيره <span id="pl"></span></button>';
   $('#bpass').onclick=function(){var st=V.R.step;if(!st||st.qRes!=null||st.passed||st.passesLeft<=0)return;this.disabled=true;send({t:'pass',sid:st.id});};
   Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(btn){btn.onclick=function(){
@@ -1957,7 +1985,7 @@ function buildQ(s){
 }
 function buildSQ(s){
   var b=$('#sq');if(!b||!s.q)return;var q=s.q;
-  b.innerHTML='<span class="qcat">👀 سؤال خصمك الآن • '+esc(q.cat)+'</span><div class="qt" style="font-size:15px">'+esc(q.text)+'</div><div class="opts sm">'+q.o.map(function(o){return '<button disabled>'+esc(o)+'</button>';}).join('')+'</div>';
+  b.innerHTML='<span class="qcat">👀 سؤال خصمك الآن • '+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt" style="font-size:15px">'+esc(q.text)+'</div><div class="opts sm">'+q.o.map(function(o){return '<button disabled>'+esc(o)+'</button>';}).join('')+'</div>';
 }
 var offerKey='',snKey='',snHide={};
 function nm2(pid){return pid===myPid?'أنت':esc(nm(pid));}
@@ -2198,7 +2226,7 @@ requestAnimationFrame(loop);
 window.addEventListener('beforeunload',function(e){if(isHost&&V&&V.phase!=='lobby'&&V.phase!=='end'){e.preventDefault();e.returnValue='';}});
 // ===== Daily Challenge: same board, traps and questions for everyone, once a day =====
 var DCAT={'علوم':'🔬 علوم','جغرافيا':'🌍 جغرافيا','تاريخ':'📜 تاريخ','رياضة':'⚽ رياضة','دين':'🕌 دين','أشياء رهيبة':'🤯 أشياء رهيبة','عامة':'💡 عامة'};
-var DPAT=[['M','رياضة'],['M','علوم'],['M','جغرافيا'],['M','أشياء رهيبة'],['M','تاريخ'],['M','دين'],['M','علوم'],['M','رياضة'],['M','جغرافيا'],['M','أشياء رهيبة'],['M','تاريخ'],['M','علوم']];
+var DPAT=[['E','رياضة'],['M','علوم'],['M','جغرافيا'],['H','علوم'],['M','أشياء رهيبة'],['E','عامة'],['M','تاريخ'],['H','تاريخ'],['M','دين'],['M','رياضة'],['E','رياضة'],['H','رياضة'],['M','علوم'],['M','جغرافيا']];
 var DHEARTS=3,DQ_MS=25000;
 function mulb(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function hstr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
@@ -2212,11 +2240,11 @@ function dBuild(key){
     got.forEach(function(c){walls.push(r+','+c);});}
   var safe={},tt={};for(var rr=0;rr<ROWS;rr++)for(var cc=0;cc<COLS;cc++){var cs=candidates([rr,cc],walls);if(cs.length){var sk=rr+','+cc;safe[sk]=cs[ri(cs.length)];tt[sk]={};cs.forEach(function(d){tt[sk][d]=TKINDS[ri(TKINDS.length)];});}}
   var used={},qs=[];
-  for(var q=0;q<36;q++){var p=DPAT[q%DPAT.length],src=p[0]==='E'?EASY:p[0]==='M'?MID:BANK,pool=[];
+  for(var q=0;q<36;q++){var p=DPAT[q%DPAT.length],src=p[0]==='E'?EASY:p[0]==='M'?MID:p[0]==='H'?BAL_H:BANK,pool=[];
     for(var x=0;x<src.length;x++)if(src[x][0]===p[1]&&!used[src[x][1]])pool.push(x);
     if(!pool.length)for(x=0;x<src.length;x++)if(!used[src[x][1]])pool.push(x);
     var b=src[pool[ri(pool.length)]];used[b[1]]=1;var o=b[2].slice();for(var m=o.length-1;m>0;m--){var w=ri(m+1),tt=o[m];o[m]=o[w];o[w]=tt;}
-    qs.push({cat:DCAT[b[0]]||b[0],text:b[1],o:o,ans:o.indexOf(b[2][0])});}
+    qs.push({cat:DCAT[b[0]]||b[0],text:b[1],o:o,ans:o.indexOf(b[2][0]),tier:p[0]==='E'?1:p[0]==='M'?2:3});}
   return {walls:walls,safe:safe,tt:tt,qs:qs};
 }
 var DG=null,DT=null,DIV=null;
@@ -2253,7 +2281,7 @@ function dRender(){
   $('#drow').textContent=st.row.join('');
   if(st.done){dResult();return;}
   var cs=dCands(),known=st.qRes===true?dSafe():null;
-  $('#dq').innerHTML='<div class="qcat">'+q.cat+' • السؤال '+(st.k+1)+'</div><div class="qtx">'+esc(q.text)+'</div><div class="dbar"><i id="dqb"></i></div><div class="opts">'+
+  $('#dq').innerHTML='<div class="qcat">'+q.cat+' • السؤال '+(st.k+1)+tierChip(q.tier)+'</div><div class="qtx">'+esc(q.text)+'</div><div class="dbar"><i id="dqb"></i></div><div class="opts">'+
     q.o.map(function(t,i){var c='';if(st.qRes!=null){if(i===q.ans)c='ok';else if(i===st.pick)c='no';}return '<button data-i="'+i+'" class="'+c+'"'+(st.qRes!=null?' disabled':'')+'>'+esc(t)+'</button>';}).join('')+'</div>';
   Array.prototype.forEach.call(document.querySelectorAll('#dq .opts button'),function(b){b.onclick=function(){dAnswer(+b.dataset.i);};});
   paint('db',{pos:st.pos,walls:DG.b.walls,cands:cs,safe:known,go:true});heroMood('db',st.qRes===true?'happy':'worried');
