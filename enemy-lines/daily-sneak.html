@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>تسلّل اليوم — خلف خطوط العدو</title>
+<style>
+/* PROTOTYPE (2026-11-27) — "Daily Infiltration": one puzzle for everyone each day. Patrolling guards with flashlights + hidden traps
+   with number clues. Turn-based and fully deterministic: the whole game is a pure function of (day seed, list of moves), so a server
+   can replay the moves and verify a score (see SNEAK.verify) — the phone never gets to "claim" a score. Not wired into the game yet. */
+:root{--bg:#111216;--pn:#1d1e24;--cell:#2a2c35;--ln:#33363f;--tx:#f1f1f4;--mu:#9a9caa;--red:#ff4757;--teal:#2ed3b7;--blue:#3a8de0;--gold:#ffb21e;--green:#2ecc71;--vio:#b06bff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;font-size:16px}
+body{padding:8px 12px 18px;max-width:480px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 2px;text-align:center}
+.sub{color:var(--mu);font-size:13px;text-align:center;margin-bottom:6px}
+.hud{display:flex;justify-content:space-between;gap:6px;margin:6px 0}
+.hud div{flex:1;background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:5px 4px;text-align:center;font-size:12px;color:var(--mu)}
+.hud b{display:block;color:var(--tx);font-size:18px}
+#wrap{position:relative;border-radius:14px;overflow:hidden;border:2px solid var(--ln);background:#0c0d11;touch-action:none}
+canvas{display:block;width:100%}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px;direction:ltr}
+.pad button{padding:13px 0;border-radius:12px;border:1px solid var(--ln);background:var(--cell);color:var(--tx);font-size:22px;font-weight:800}
+.pad button:active{transform:scale(.96);background:#343745}
+.pad .wait{font-size:15px;color:var(--gold)}
+.pad .flag.on{background:#3a2a10;border-color:var(--gold)}
+.tip{font-size:13px;color:var(--mu);text-align:center;margin-top:7px;line-height:1.6}
+#msg{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);background:#000d;border:2px solid var(--red);border-radius:14px;padding:10px 16px;font-weight:900;font-size:17px;display:none;text-align:center;white-space:nowrap}
+#end{display:none;position:fixed;inset:0;background:#000c;z-index:9;align-items:center;justify-content:center;padding:14px}
+#end .box{background:var(--pn);border:2px solid var(--green);border-radius:16px;padding:16px;max-width:400px;width:100%;text-align:center}
+#end .big{font-size:40px;font-weight:900;margin:6px 0}
+#end button{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:0;font-size:16px;font-weight:800}
+.share{background:var(--green);color:#06210f}.again{background:var(--cell);color:var(--tx)}
+.lb{margin-top:10px;padding:8px;border:1px dashed var(--ln);border-radius:10px;font-size:13px;color:var(--mu)}
+</style>
+</head>
+<body>
+<h1>🕵️ تسلّل اليوم</h1>
+<div class="sub" id="day"></div>
+<div class="hud"><div>الحركات<b id="hm">0</b></div><div>انكشفت<b id="hc">0/3</b></div><div>الوقت<b id="ht">0:00</b></div></div>
+<div id="wrap"><canvas id="cv"></canvas><div id="msg"></div></div>
+<div class="pad">
+  <button class="flag" id="bflag" title="علّم مربعًا تشك أن فيه فخًّا">🚩</button><button data-d="u">⬆️</button><button class="wait" data-d="w">⏸ انتظر</button>
+  <button data-d="l">⬅️</button><button data-d="d">⬇️</button><button data-d="r">➡️</button>
+</div>
+<div class="tip">اعبر إلى 🚪 في الأعلى. الحرّاس يتحركون خطوة مع كل حركة منك، ومن يقف في ضوء مصباحهم ينكشف.<br>الفخاخ مخفية: الرقم في المربع الذي تقف عليه = عدد الفخاخ في المربعات الثمانية حوله.</div>
+<div id="end"><div class="box"><div id="eh" style="font-size:20px;font-weight:900"></div><div class="big" id="eb"></div><div id="ed" style="color:var(--mu);line-height:1.7"></div>
+  <button class="share" id="bshare">📋 انسخ نتيجتك للأصدقاء</button><button class="again" id="bagain">↺ أعد المحاولة (تدريب — لا تُحتسب)</button>
+  <div class="lb">🏆 لوحة متصدري اليوم ستُضاف بعد اعتماد الفكرة: الخادم يعيد تشغيل حركاتك بنفسه ويحسب نتيجتك — لا يمكن إرسال نتيجة مزيّفة.</div></div></div>
+<script>
+"use strict";
+/* ===================== THE PURE GAME (same code can run on the server) ===================== */
+var SNEAK=(function(){
+  var W=9,H=13,VIS=3,MAXCATCH=3,CATCH_COST=15;
+  function rngOf(seed){var a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;var t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+  function hash(s){var h=2166136261>>>0;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h;}
+  var DIR={u:[0,-1],d:[0,1],l:[-1,0],r:[1,0],w:[0,0]};
+  function gcd(a,b){return b?gcd(b,a%b):a;}
+  function guardAt(g,t){var n=g.path.length;if(n<2)return {x:g.path[0][0],y:g.path[0][1],fx:g.f[0],fy:g.f[1]};var P=2*(n-1),k=(t+g.off)%P,i=k<n?k:P-k,dir=k<n-1?1:-1;
+    if(k===n-1)dir=-1;var a=g.path[i],b=g.path[Math.max(0,Math.min(n-1,i+dir))];var fx=Math.sign(b[0]-a[0]),fy=Math.sign(b[1]-a[1]);if(!fx&&!fy){fx=g.f[0];fy=g.f[1];}return {x:a[0],y:a[1],fx:fx,fy:fy};}
+  function seen(L,t){var o={};L.guards.forEach(function(g){var p=guardAt(g,t);o[p.x+','+p.y]=1;for(var k=1;k<=VIS;k++){var x=p.x+p.fx*k,y=p.y+p.fy*k;if(x<0||y<0||x>=W||y>=H||L.wall[y][x])break;o[x+','+y]=1;}});return o;}
+  function gen(dayKey){
+    for(var att=0;att<400;att++){var R=rngOf(hash(dayKey+'#'+att)),ri=function(n){return Math.floor(R()*n);};
+      var wall=[],trap=[],i,j;for(j=0;j<H;j++){wall.push([]);trap.push([]);for(i=0;i<W;i++){wall[j].push(0);trap[j].push(0);}}
+      var sx=4,sy=H-1,ex=ri(W),ey=0,used={};used[sx+','+sy]=1;used[ex+','+ey]=1;
+      for(var w=0;w<14;w++){var x=ri(W),y=1+ri(H-3);if(Math.abs(x-sx)+Math.abs(y-sy)<3)continue;wall[y][x]=1;}
+      var guards=[],ng=3+ri(2),pathCells={};
+      for(var g=0;g<ng&&guards.length<ng;g++){for(var tr=0;tr<30;tr++){var gx=ri(W),gy=2+ri(H-6);if(wall[gy][gx])continue;var hz=R()<0.5,d=hz?[1,0]:[0,1],len=3+ri(3),path=[[gx,gy]];
+          for(var s=1;s<len;s++){var nx=gx+d[0]*s,ny=gy+d[1]*s;if(nx>=W||ny>=H-2||wall[ny][nx])break;path.push([nx,ny]);}
+          if(path.length<3)continue;guards.push({path:path,off:ri(2*(path.length-1)),f:d});path.forEach(function(c){pathCells[c[0]+','+c[1]]=1;});break;}}
+      var nt=11+ri(4),placed=0,guardOK=true;
+      for(var q=0;q<200&&placed<nt;q++){var x2=ri(W),y2=1+ri(H-2);if(wall[y2][x2]||trap[y2][x2]||pathCells[x2+','+y2])continue;if(Math.abs(x2-sx)<=1&&Math.abs(y2-sy)<=1)continue;if(x2===ex&&y2===ey)continue;trap[y2][x2]=1;placed++;}
+      var L={W:W,H:H,wall:wall,trap:trap,guards:guards,sx:sx,sy:sy,ex:ex,ey:ey,key:dayKey};
+      var P=1;guards.forEach(function(g){var p=2*(g.path.length-1);P=P*p/gcd(P,p);});L.P=P;
+      if(seen(L,0)[sx+','+sy])continue;
+      var par=solve(L);if(par<0||par<16||par>40)continue;L.par=par;return L;}
+    return null;}
+  /* shortest safe route with full knowledge (used for the daily "best possible" and to be sure every day is solvable) */
+  function solve(L){var P=L.P,start=L.sx+','+L.sy+',0',q=[[L.sx,L.sy,0,0]],vis={};vis[start]=1;var SE=[];for(var t=0;t<P;t++)SE.push(seen(L,t));
+    while(q.length){var c=q.shift();if(c[0]===L.ex&&c[1]===L.ey)return c[3];if(c[3]>80)continue;
+      for(var k in DIR){var nx=c[0]+DIR[k][0],ny=c[1]+DIR[k][1];if(nx<0||ny<0||nx>=L.W||ny>=L.H||L.wall[ny][nx]||L.trap[ny][nx])continue;var nt=(c[2]+1)%P;if(SE[nt][nx+','+ny])continue;var key=nx+','+ny+','+nt;if(vis[key])continue;vis[key]=1;q.push([nx,ny,nt,c[3]+1]);}}
+    return -1;}
+  function count(L,x,y){var n=0;for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;var a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<L.W&&b<L.H&&L.trap[b][a])n++;}return n;}
+  /* one move. returns the new state; the state is plain data so it can be replayed anywhere */
+  function newState(L){var s={x:L.sx,y:L.sy,t:0,moves:0,catches:0,done:false,won:false,rev:{},hit:{},ev:null};s.rev[L.sx+','+L.sy]=count(L,L.sx,L.sy);return s;}
+  function step(L,s,d){if(s.done||!DIR[d])return s;var nx=s.x+DIR[d][0],ny=s.y+DIR[d][1];s.ev=null;
+    if(nx<0||ny<0||nx>=L.W||ny>=L.H||L.wall[ny][nx]){s.ev='bump';return s;}
+    s.x=nx;s.y=ny;s.t++;s.moves++;
+    if(L.trap[ny][nx]){s.hit[nx+','+ny]=1;return caught(L,s,'trap');}
+    s.rev[nx+','+ny]=count(L,nx,ny);
+    if(seen(L,s.t)[nx+','+ny])return caught(L,s,'guard');
+    if(nx===L.ex&&ny===L.ey){s.done=true;s.won=true;}
+    return s;}
+  function caught(L,s,why){s.catches++;s.ev=why;if(s.catches>=MAXCATCH){s.done=true;s.won=false;return s;}
+    s.x=L.sx;s.y=L.sy;var tries=0;while(seen(L,s.t)[s.x+','+s.y]&&tries++<20)s.t++;return s;}
+  function score(s){return s.won?s.moves+CATCH_COST*s.catches:null;}
+  /* what the server would run: same day key + the player's move string → the score (or null). A faked score is impossible. */
+  function verify(dayKey,moveStr){var L=gen(dayKey);if(!L)return null;var s=newState(L);for(var i=0;i<moveStr.length&&!s.done;i++)step(L,s,moveStr[i]);return {won:s.won,moves:s.moves,catches:s.catches,score:score(s),par:L.par};}
+  return {gen:gen,newState:newState,step:step,seen:seen,guardAt:guardAt,verify:verify,score:score,CATCH_COST:CATCH_COST,MAXCATCH:MAXCATCH,DIR:DIR};
+})();
+
+/* ===================== THE PAGE ===================== */
+(function(){
+  var dt=new Date(),dayKey=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  var qp=/[?&]day=([0-9-]+)/.exec(location.search);if(qp)dayKey=qp[1];
+  var L=SNEAK.gen(dayKey),S=SNEAK.newState(L),log='',flags={},flagMode=false,t0=0,practice=false,anim=0,lastEv=null;
+  var cv=document.getElementById('cv'),c=cv.getContext('2d'),CS=0;
+  document.getElementById('day').textContent='لغز '+dayKey+' — نفس اللغز لكل اللاعبين اليوم';
+  function size(){var w=document.getElementById('wrap').clientWidth,dpr=Math.min(2,window.devicePixelRatio||1);CS=Math.floor(w/L.W);cv.width=CS*L.W*dpr;cv.height=CS*L.H*dpr;cv.style.height=(CS*L.H)+'px';c.setTransform(dpr,0,0,dpr,0,0);draw();}
+  function rr(x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+  function draw(){var now=performance.now();c.clearRect(0,0,cv.width,cv.height);var see=SNEAK.seen(L,S.t),i,j;
+    for(j=0;j<L.H;j++)for(i=0;i<L.W;i++){var X=i*CS,Y=j*CS,k=i+','+j;
+      if(L.wall[j][i]){c.fillStyle='#3b3f4c';rr(X+1,Y+1,CS-2,CS-2,6);c.fill();c.fillStyle='#4a4f5f';c.fillRect(X+4,Y+4,CS-8,4);continue;}
+      c.fillStyle=S.rev[k]!=null?'#22252e':'#191a20';rr(X+1,Y+1,CS-2,CS-2,6);c.fill();
+      if(see[k]){c.fillStyle='rgba(255,214,90,.28)';rr(X+1,Y+1,CS-2,CS-2,6);c.fill();}
+      if(S.rev[k]!=null&&S.rev[k]>0){c.fillStyle=['','#4fc3f7','#2ecc71','#ffb21e','#ff7043','#ff4757','#ff4757','#ff4757','#ff4757'][S.rev[k]];c.font='900 '+Math.round(CS*.46)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(S.rev[k],X+CS/2,Y+CS/2+1);}
+      if(S.hit[k]||(S.done&&!S.won&&L.trap[j][i])){c.font=Math.round(CS*.55)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('💥',X+CS/2,Y+CS/2);}
+      else if(flags[k]){c.font=Math.round(CS*.5)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🚩',X+CS/2,Y+CS/2);}}
+    /* exit */ var EX=L.ex*CS,EY=L.ey*CS;c.fillStyle='#1d4d33';rr(EX+2,EY+2,CS-4,CS-4,7);c.fill();c.font=Math.round(CS*.6)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('🚪',EX+CS/2,EY+CS/2+1);
+    /* guards: helmet, body, flashlight towards where they look */
+    L.guards.forEach(function(g){var p=SNEAK.guardAt(g,S.t),X=p.x*CS+CS/2,Y=p.y*CS+CS/2,r=CS*.32;
+      c.fillStyle='#1b2a44';c.beginPath();c.arc(X,Y+r*.25,r,0,6.283);c.fill();c.fillStyle='#ff4757';c.beginPath();c.arc(X,Y-r*.25,r*.72,Math.PI,0);c.fill();c.fillRect(X-r*.85,Y-r*.3,r*1.7,r*.22);
+      c.fillStyle='#ffd65a';c.beginPath();c.arc(X+p.fx*r*.9,Y+p.fy*r*.9,r*.28,0,6.283);c.fill();
+      c.fillStyle='#fff';c.beginPath();c.arc(X-r*.28+p.fx*r*.15,Y+r*.05+p.fy*r*.15,r*.16,0,6.283);c.arc(X+r*.28+p.fx*r*.15,Y+r*.05+p.fy*r*.15,r*.16,0,6.283);c.fill();});
+    /* player */ var PX=S.x*CS+CS/2,PY=S.y*CS+CS/2,pr=CS*.32,bob=Math.sin(now/220)*1.5;c.fillStyle='#2ed3b7';c.beginPath();c.arc(PX,PY+bob,pr,0,6.283);c.fill();
+    c.fillStyle='#0b3b33';c.fillRect(PX-pr*.8,PY-pr*.25+bob,pr*1.6,pr*.32);c.fillStyle='#fff';c.beginPath();c.arc(PX-pr*.32,PY-pr*.1+bob,pr*.13,0,6.283);c.arc(PX+pr*.32,PY-pr*.1+bob,pr*.13,0,6.283);c.fill();
+    if(anim)requestAnimationFrame(draw);}
+  function hud(){document.getElementById('hm').textContent=S.moves;document.getElementById('hc').textContent=S.catches+'/'+SNEAK.MAXCATCH;}
+  function msg(t,col){var m=document.getElementById('msg');m.innerHTML=t;m.style.borderColor=col||'#ff4757';m.style.display='block';clearTimeout(m._h);m._h=setTimeout(function(){m.style.display='none';},1300);}
+  function vib(n){try{navigator.vibrate&&navigator.vibrate(n);}catch(e){}}
+  function act(d){if(S.done)return;if(!t0)t0=Date.now();var before=S.catches;SNEAK.step(L,S,d);if(S.ev!=='bump')log+=d;
+    if(S.ev==='bump'){vib(15);return draw();}
+    if(S.catches>before){vib([60,40,60]);msg(S.ev==='trap'?'💥 فخّ! عُدت إلى البداية (+'+SNEAK.CATCH_COST+')':'🔦 كشفك الحارس! عُدت إلى البداية (+'+SNEAK.CATCH_COST+')');}
+    hud();draw();if(S.done)setTimeout(end,500);}
+  function end(){var e=document.getElementById('end'),sc=SNEAK.score(S),v=SNEAK.verify(dayKey,log);
+    document.getElementById('eh').textContent=S.won?'✅ وصلت إلى الباب!':'🚨 انكشفت 3 مرات';
+    document.getElementById('eb').textContent=S.won?sc+' نقطة':'—';
+    document.getElementById('ed').innerHTML=S.won?('الحركات: <b>'+S.moves+'</b> • انكشفت: <b>'+S.catches+'</b> (×'+SNEAK.CATCH_COST+')<br>أفضل حل ممكن اليوم: <b>'+L.par+'</b> حركة • الوقت: '+fmt()+'<br><span style="font-size:12px">تحقّق إعادة التشغيل: '+(v&&v.score===sc?'✔ مطابق':'✖')+(practice?' • (محاولة تدريب)':'')+'</span>'):'حاول غدًا لغزًا جديدًا — أو تدرّب على لغز اليوم.';
+    e.style.display='flex';}
+  function fmt(){var s=t0?Math.floor((Date.now()-t0)/1000):0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  setInterval(function(){if(!S.done)document.getElementById('ht').textContent=fmt();},500);
+  document.querySelectorAll('.pad button[data-d]').forEach(function(b){b.onclick=function(){act(b.dataset.d);};});
+  var bf=document.getElementById('bflag');bf.onclick=function(){flagMode=!flagMode;bf.classList.toggle('on',flagMode);if(flagMode)msg('🚩 اضغط مربعًا لتعليمه','#ffb21e');};
+  cv.addEventListener('click',function(e){if(!flagMode)return;var r=cv.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/CS),y=Math.floor((e.clientY-r.top)/CS),k=x+','+y;if(S.rev[k]!=null)return;flags[k]=!flags[k];draw();});
+  var sx0=0,sy0=0;cv.addEventListener('touchstart',function(e){var t=e.touches[0];sx0=t.clientX;sy0=t.clientY;},{passive:true});
+  cv.addEventListener('touchend',function(e){if(flagMode)return;var t=e.changedTouches[0],dx=t.clientX-sx0,dy=t.clientY-sy0;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;act(Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy>0?'d':'u'));},{passive:true});
+  document.addEventListener('keydown',function(e){var d={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',' ':'w'}[e.key];if(d){e.preventDefault();act(d);}});
+  document.getElementById('bagain').onclick=function(){S=SNEAK.newState(L);log='';flags={};t0=0;practice=true;document.getElementById('end').style.display='none';hud();draw();};
+  document.getElementById('bshare').onclick=function(){var t='🕵️ خلف خطوط العدو — تسلّل اليوم '+dayKey+'\n'+(S.won?'✅ '+SNEAK.score(S)+' نقطة • '+S.moves+' حركة (الأفضل '+L.par+') • 🚨'+S.catches:'🚨 انكشفت 3 مرات')+'\nhttps://behind-enemy-lines.onrender.com';
+    try{navigator.clipboard.writeText(t).then(function(){document.getElementById('bshare').textContent='✅ نُسخت';});}catch(e){prompt('انسخ:',t);}};
+  window.__sneak={L:L,get S(){return S;},log:function(){return log;},act:act,dayKey:dayKey};
+  anim=1;addEventListener('resize',size);size();hud();
+})();
+</script>
+</body>
+</html>
