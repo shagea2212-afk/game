@@ -144,6 +144,19 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 4px;b
 #snatch .offer{box-shadow:0 6px 30px #000c}
 .offer.hot{background:#3a1820;border-color:var(--red)}
 .offer.done{background:#1d1e24;border-color:var(--ln);font-size:14px;padding:7px}
+/* (2026-11-27, owner) whose question is it? three looks that cannot be confused: GREEN = your turn, answer; GREY dashed = someone else's turn, do not answer; VIOLET = thrown to you, snatch it now */
+.turnb{display:block;text-align:center;font-weight:900;font-size:15px;border-radius:10px;padding:6px 8px;margin:-2px 0 6px}
+.q.mine{background:#0d2a1d;border:2px solid var(--green);box-shadow:0 0 0 3px #2ecc7126,0 0 18px #2ecc7140;animation:qMine 1.6s ease-in-out infinite}
+@keyframes qMine{50%{box-shadow:0 0 0 5px #2ecc7133,0 0 26px #2ecc7166}}
+.turnb.mine{background:var(--green);color:#06210f}
+.q.theirs{background:#14151a;border:2px dashed #4a4d58;opacity:.92}
+.turnb.theirs{background:#2a2c35;color:#b9bccb;font-size:14px}
+.q.theirs .opts button{background:transparent;border-style:dashed;border-color:#3c3f49;color:#8d90a0;opacity:.7;cursor:not-allowed}
+.offer.open{background:#221436;border:2px solid #b06bff;box-shadow:0 0 0 3px #b06bff2e,0 0 22px #b06bff55;animation:qOpen 1.1s ease-in-out infinite}
+@keyframes qOpen{50%{box-shadow:0 0 0 6px #b06bff40,0 0 30px #b06bff88}}
+.turnb.open{background:#b06bff;color:#1a0833}
+.turnb.hot{background:var(--red);color:#2a0008}
+@media (prefers-reduced-motion:reduce){.q.mine,.offer.open{animation:none}}
 .offer .opts{margin-top:6px}
 #pop{direction:ltr;position:fixed;top:38%;left:0;right:0;text-align:center;font-size:54px;font-weight:900;pointer-events:none;z-index:9;opacity:0;text-shadow:0 3px 12px #000}
 #pop.on{animation:popa 1.1s ease-out}@keyframes popa{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.15)}70%{opacity:1}100%{opacity:0;transform:translateY(-50px)}}
@@ -2191,6 +2204,7 @@ var I18N={
 "أعلى اليسار":"up-left","للأمام":"forward","أعلى اليمين":"up-right",
 "💡 التلميحات التعليمية: تعمل (اضغط للإيقاف)":"💡 Learning tips: on (tap to turn off)","💡 التلميحات التعليمية: متوقفة (اضغط للتشغيل)":"💡 Learning tips: off (tap to turn on)",
 "🔊 المؤثرات الصوتية: تعمل (اضغط للكتم)":"🔊 Sound effects: on (tap to mute)","🔇 المؤثرات الصوتية: مكتومة (اضغط للتشغيل)":"🔇 Sound effects: muted (tap to unmute)",
+"🎯 دورك — أجب الآن":"🎯 Your turn — answer now","— ليس دورك":"— not your turn","👀 دور":"👀 Turn:","ليس دورك — هذا سؤال":"Not your turn — this is the question of","إن رماه يمكنك اقتناصه.":"If they throw it, you can snatch it.","⚡ دورك الآن — اقتنص وأجب":"⚡ Your move — snatch it and answer","🎯 دورك الآن — أجب":"🎯 Your turn now — answer",
 "أنت":"You","تدريب":"Practice","🤖 المدرّب":"🤖 Coach","اكتب اسمك أولاً":"Enter your name first",
 "تعذّر تحميل مكتبة الاتصال — تحقق من الإنترنت ثم أعد فتح الصفحة":"Could not load the connection library — check your internet and reopen the page",
 "⏳ جارٍ إنشاء الغرفة...":"⏳ Creating room...","خطأ في الاتصال:":"Connection error:","رمز الغرفة من 5 أحرف":"The room code has 5 letters","⏳ جارٍ الاتصال بالغرفة...":"⏳ Connecting to the room...","الغرفة غير موجودة أو أُغلقت":"Room not found or closed","📡 انقطع الاتصال بالمضيف":"📡 Lost connection to the host","جارٍ إعادة المحاولة...":"Retrying...",
@@ -2590,8 +2604,8 @@ function buildRun(role){
 function doMove(d){var R=V.R,s=R.step;if(!s||!s.trapsSet||R.stun-since()>0||s.cands.indexOf(d)<0)return;send({t:'move',sid:s.id,d:d});}
 document.addEventListener('keydown',function(e){if(dph()!=='run'||V.R.mover!==myPid)return;var d={ArrowUp:'u',ArrowLeft:'l',ArrowRight:'r'}[e.key];if(d){e.preventDefault();doMove(d);}});
 function buildQ(s){
-  var q=s.q,b=$('#qbox');
-  b.innerHTML='<span class="qcat">'+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
+  var q=s.q,b=$('#qbox');b.className='q mine';
+  b.innerHTML='<span class="turnb mine">🎯 دورك — أجب الآن</span><span class="qcat">'+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt">'+esc(q.text)+'</div><div class="opts'+(q.emo?' emo':'')+'">'+q.o.map(function(o,i){return '<button data-i="'+i+'">'+esc(o)+'</button>';}).join('')+'</div>'+
     '<button class="passb" id="bpass">🔁 راهِن خصمك بهذا السؤال وخذ غيره <span id="pl"></span></button>';
   $('#bpass').onclick=function(){var st=V.R.step;if(!st||st.qRes!=null||st.passed||st.passesLeft<=0)return;this.disabled=true;send({t:'pass',sid:st.id});};
   Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(btn){btn.onclick=function(){
@@ -2599,8 +2613,9 @@ function buildQ(s){
     send({t:'answer',sid:s.id,a:+btn.dataset.i});};});
 }
 function buildSQ(s){
-  var b=$('#sq');if(!b||!s.q)return;var q=s.q;
-  b.innerHTML='<span class="qcat">👀 سؤال خصمك الآن • '+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt" style="font-size:15px">'+esc(q.text)+'</div><div class="opts sm">'+q.o.map(function(o){return '<button disabled>'+esc(o)+'</button>';}).join('')+'</div>';
+  var b=$('#sq');if(!b||!s.q)return;var q=s.q,who=V&&V.R&&V.R.mover?esc(nm(V.R.mover)):'';b.className='q theirs';
+  b.innerHTML='<span class="turnb theirs">👀 دور '+who+' — ليس دورك</span><span class="qcat">'+esc(q.cat)+tierChip(q.tier)+'</span><div class="qt" style="font-size:15px">'+esc(q.text)+'</div><div class="opts sm">'+q.o.map(function(o){return '<button aria-disabled="true">'+esc(o)+'</button>';}).join('')+'</div>';
+  Array.prototype.forEach.call(b.querySelectorAll('.opts button'),function(x){x.onclick=function(){toast(T('ليس دورك — هذا سؤال')+' '+(V&&V.R&&V.R.mover?nm(V.R.mover):'')+'. '+T('إن رماه يمكنك اقتناصه.'));};});
 }
 var offerKey='',snKey='',snHide={};
 function nm2(pid){return pid===myPid?'أنت':esc(nm(pid));}
@@ -2627,11 +2642,11 @@ function offerHtml(O,inline){
     var mate=V.team&&teamOf(O.from)===teamOf(myPid);
     var rule=V.team?(mate?'زميلك! أنقذه: صح = <b>+1</b> لك • خطأ = <b>−1</b> عليك':'صح = <b>+2</b> لك و<b>−1</b> عليه • خطأ = <b>−1</b> عليك')+' • ⏱ <span class="oleft"></span>'
       :'أجب صح = <b>+2</b> لك و<b>−1</b> له • خطأ أو تأخر = <b>+1</b> له • ⏱ <span class="oleft"></span>';
-    return '<div class="offer"><b>'+head+'</b><div class="legend">'+rule+'</div>'+opts+
+    return '<div class="offer open"><span class="turnb open">⚡ دورك الآن — اقتنص وأجب</span><b>'+head+'</b><div class="legend">'+rule+'</div>'+opts+
       (O.to===myPid?'<button class="passb obnc">🔄 اقلب الرهان عليه: هو يجيب، صح = +2 له • خطأ = −2 عليه و+1 لك</button>':'')+
       (inline?'':'<button class="passb ohide">إخفاء</button>')+'</div>';}
   if(O.state==='bounced'&&O.from===myPid)
-    return '<div class="offer hot"><b>🔄 قلب خصمك الرهان عليك!</b><div class="legend">أجب صح = <b>+2</b> لك • خطأ أو تأخر = <b>−2</b> عليك و<b>+1</b> له • ⏱ <span class="oleft"></span></div>'+opts+'</div>';
+    return '<div class="offer hot"><span class="turnb hot">🎯 دورك الآن — أجب</span><b>🔄 قلب خصمك الرهان عليك!</b><div class="legend">أجب صح = <b>+2</b> لك • خطأ أو تأخر = <b>−2</b> عليك و<b>+1</b> له • ⏱ <span class="oleft"></span></div>'+opts+'</div>';
   if(O.state==='pending'&&O.locked)return '<div class="offer done">❌ أخطأت (−1) — بانتظار الآخرين…</div>';
   if(O.state==='pending')return '<div class="offer done">'+(O.from===myPid?'🔁 رميتَ سؤالك'+(V.team?' للجميع':' على خصمك')+'… (⏱ <span class="oleft"></span>)':'⚡ '+esc(nm(O.from))+' رمى سؤاله… (⏱ <span class="oleft"></span>)')+'</div>';
   if(O.state==='bounced')return '<div class="offer done">🔄 قُلب الرهان على '+nm2(O.from)+'… (⏱ <span class="oleft"></span>)</div>';
